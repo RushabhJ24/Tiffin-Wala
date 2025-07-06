@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}Menu - Tiffin Service{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <h2><i class="fas fa-utensils me-2"></i>Today's Menu</h2>
+                    <p class="mb-0 text-muted">
+                        Fresh and delicious meals prepared daily. Choose from our variety of options.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if menu_by_type %}
+        {% for meal_type, items in menu_by_type.items() %}
+        <div class="row mb-5">
+            <div class="col-12">
+                <h3 class="mb-4">
+                    {% if meal_type == 'breakfast' %}
+                        <i class="fas fa-sun text-warning me-2"></i>
+                    {% elif meal_type == 'lunch' %}
+                        <i class="fas fa-sun text-primary me-2"></i>
+                    {% else %}
+                        <i class="fas fa-moon text-info me-2"></i>
+                    {% endif %}
+                    {{ meal_type.title() }}
+                </h3>
+                
+                <div class="row g-4">
+                    {% for item in items %}
+                    <div class="col-lg-4 col-md-6">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <h5 class="card-title">{{ item.name }}</h5>
+                                    <span class="badge bg-{{ 'warning' if meal_type == 'breakfast' else 'primary' if meal_type == 'lunch' else 'info' }}">
+                                        {{ item.meal_type.title() }}
+                                    </span>
+                                </div>
+                                
+                                {% if item.description %}
+                                <p class="card-text text-muted">{{ item.description }}</p>
+                                {% endif %}
+                                
+                                <div class="row mb-3">
+                                    <div class="col-6">
+                                        <div class="text-center p-2 bg-light rounded">
+                                            <h6 class="mb-1">Full Tiffin</h6>
+                                            <h4 class="text-primary mb-0">₹{{ "%.0f" | format(item.price_full) }}</h4>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="text-center p-2 bg-light rounded">
+                                            <h6 class="mb-1">Roti Only</h6>
+                                            <h4 class="text-success mb-0">₹{{ "%.0f" | format(item.price_roti_only) }}</h4>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {% if current_user.is_authenticated and not current_user.is_admin %}
+                                <div class="d-grid">
+                                    <a href="{{ url_for('place_order', menu_item_id=item.id) }}" 
+                                       class="btn btn-primary">
+                                        <i class="fas fa-shopping-cart me-2"></i>Order Now
+                                    </a>
+                                </div>
+                                {% elif not current_user.is_authenticated %}
+                                <div class="d-grid">
+                                    <a href="{{ url_for('login') }}" class="btn btn-outline-primary">
+                                        <i class="fas fa-sign-in-alt me-2"></i>Login to Order
+                                    </a>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <!-- No Menu Items -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <i class="fas fa-utensils display-1 text-muted mb-4"></i>
+                        <h4 class="text-muted">No Menu Available Today</h4>
+                        <p class="text-muted">
+                            We're currently updating our menu. Please check back later or contact us for more information.
+                        </p>
+                        {% if not current_user.is_authenticated %}
+                        <div class="mt-4">
+                            <a href="{{ url_for('register') }}" class="btn btn-primary me-2">
+                                <i class="fas fa-user-plus me-2"></i>Register
+                            </a>
+                            <a href="{{ url_for('login') }}" class="btn btn-outline-primary">
+                                <i class="fas fa-sign-in-alt me-2"></i>Login
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Service Information -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <i class="fas fa-clock display-6 mb-2"></i>
+                            <h6>Fresh Daily</h6>
+                            <small>Prepared fresh every day</small>
+                        </div>
+                        <div class="col-md-3">
+                            <i class="fas fa-truck display-6 mb-2"></i>
+                            <h6>Home Delivery</h6>
+                            <small>Within 5km radius</small>
+                        </div>
+                        <div class="col-md-3">
+                            <i class="fas fa-money-bill-wave display-6 mb-2"></i>
+                            <h6>Cash on Delivery</h6>
+                            <small>Pay when you receive</small>
+                        </div>
+                        <div class="col-md-3">
+                            <i class="fas fa-leaf display-6 mb-2"></i>
+                            <h6>Healthy & Fresh</h6>
+                            <small>Nutritious ingredients</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

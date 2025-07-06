@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+
+{% block title %}Place Order - {{ menu_item.name }} - Tiffin Service{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Menu Item Details -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-shopping-cart me-2"></i>Place Order
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h5>{{ menu_item.name }}</h5>
+                            <span class="badge bg-secondary mb-2">{{ menu_item.meal_type.title() }}</span>
+                            {% if menu_item.description %}
+                            <p class="text-muted">{{ menu_item.description }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <div class="bg-light p-3 rounded">
+                                    <h6 class="mb-2">Pricing</h6>
+                                    <div class="mb-2">
+                                        <strong>Full Tiffin: </strong>₹{{ "%.0f" | format(menu_item.price_full) }}
+                                    </div>
+                                    <div>
+                                        <strong>Roti Only: </strong>₹{{ "%.0f" | format(menu_item.price_roti_only) }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Order Form -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Order Details</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('place_order', menu_item_id=menu_item.id) }}" id="orderForm">
+                        <div class="row">
+                            <!-- Order Type -->
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Order Type</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="order_type" id="full_tiffin" 
+                                           value="full" checked onchange="updatePricing()">
+                                    <label class="form-check-label" for="full_tiffin">
+                                        <strong>Full Tiffin</strong> - ₹{{ "%.0f" | format(menu_item.price_full) }}
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="order_type" id="roti_only" 
+                                           value="roti" onchange="updatePricing()">
+                                    <label class="form-check-label" for="roti_only">
+                                        <strong>Roti Only</strong> - ₹{{ "%.0f" | format(menu_item.price_roti_only) }}
+                                    </label>
+                                </div>
+                                <input type="hidden" name="is_roti_only" id="is_roti_only" value="">
+                            </div>
+
+                            <!-- Quantity -->
+                            <div class="col-md-6 mb-3">
+                                <label for="quantity" class="form-label">Quantity</label>
+                                <div class="input-group">
+                                    <button type="button" class="btn btn-outline-secondary" onclick="changeQuantity(-1)">
+                                        <i class="fas fa-minus"></i>
+                                    </button>
+                                    <input type="number" class="form-control text-center" id="quantity" name="quantity" 
+                                           value="1" min="1" max="10" onchange="updatePricing()">
+                                    <button type="button" class="btn btn-outline-secondary" onclick="changeQuantity(1)">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Delivery Address -->
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label for="delivery_address" class="form-label">Delivery Address</label>
+                                <textarea class="form-control" id="delivery_address" name="delivery_address" rows="3" 
+                                          placeholder="Enter delivery address">{{ current_user.address }}</textarea>
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Make sure the address is within our 5km service area.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Location Verification -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <button type="button" class="btn btn-outline-primary" id="verifyLocation">
+                                    <i class="fas fa-map-marker-alt me-2"></i>Verify Delivery Location
+                                </button>
+                            </div>
+                            <div class="col-md-6">
+                                <div id="locationStatus" class="mt-2"></div>
+                            </div>
+                        </div>
+
+                        <!-- Hidden location fields -->
+                        <input type="hidden" id="delivery_lat" name="delivery_lat" value="{{ current_user.latitude }}">
+                        <input type="hidden" id="delivery_lng" name="delivery_lng" value="{{ current_user.longitude }}">
+
+                        <!-- Special Notes -->
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label for="notes" class="form-label">Special Instructions (Optional)</label>
+                                <textarea class="form-control" id="notes" name="notes" rows="2" 
+                                          placeholder="Any special instructions for delivery or preparation"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Order Summary -->
+                        <div class="row">
+                            <div class="col-12 mb-4">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <h6 class="card-title">Order Summary</h6>
+                                        <div class="row">
+                                            <div class="col-8">
+                                                <div id="summary-item">{{ menu_item.name }} (Full Tiffin)</div>
+                                                <small class="text-muted">Quantity: <span id="summary-quantity">1</span></small>
+                                            </div>
+                                            <div class="col-4 text-end">
+                                                <h5 class="mb-0">₹<span id="total-price">{{ "%.0f" | format(menu_item.price_full) }}</span></h5>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-between">
+                                    <a href="{{ url_for('menu') }}" class="btn btn-outline-secondary">
+                                        <i class="fas fa-arrow-left me-2"></i>Back to Menu
+                                    </a>
+                                    <button type="submit" class="btn btn-primary btn-lg" id="placeOrderBtn">
+                                        <i class="fas fa-shopping-cart me-2"></i>Place Order
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const menuItem = {
+    name: "{{ menu_item.name }}",
+    priceFull: {{ menu_item.price_full }},
+    priceRoti: {{ menu_item.price_roti_only }}
+};
+
+function changeQuantity(delta) {
+    const quantityInput = document.getElementById('quantity');
+    let newValue = parseInt(quantityInput.value) + delta;
+    if (newValue < 1) newValue = 1;
+    if (newValue > 10) newValue = 10;
+    quantityInput.value = newValue;
+    updatePricing();
+}
+
+function updatePricing() {
+    const quantity = parseInt(document.getElementById('quantity').value);
+    const isRotiOnly = document.getElementById('roti_only').checked;
+    const unitPrice = isRotiOnly ? menuItem.priceRoti : menuItem.priceFull;
+    const totalPrice = unitPrice * quantity;
+    
+    // Update hidden field
+    document.getElementById('is_roti_only').value = isRotiOnly ? 'on' : '';
+    
+    // Update summary
+    const orderType = isRotiOnly ? 'Roti Only' : 'Full Tiffin';
+    document.getElementById('summary-item').textContent = `${menuItem.name} (${orderType})`;
+    document.getElementById('summary-quantity').textContent = quantity;
+    document.getElementById('total-price').textContent = Math.round(totalPrice);
+}
+
+// Location verification
+document.getElementById('verifyLocation').addEventListener('click', function() {
+    const btn = this;
+    const status = document.getElementById('locationStatus');
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Verifying...';
+    status.innerHTML = '<span class="text-info">Checking delivery location...</span>';
+    
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                
+                document.getElementById('delivery_lat').value = lat;
+                document.getElementById('delivery_lng').value = lng;
+                
+                // Check if location is serviceable
+                fetch('/api/check-location', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        latitude: lat,
+                        longitude: lng
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.serviceable) {
+                        status.innerHTML = '<span class="text-success"><i class="fas fa-check-circle me-2"></i>Location verified! We deliver to your area.</span>';
+                    } else {
+                        status.innerHTML = '<span class="text-danger"><i class="fas fa-times-circle me-2"></i>Sorry, we don\'t deliver to your current location.</span>';
+                    }
+                })
+                .catch(error => {
+                    status.innerHTML = '<span class="text-warning"><i class="fas fa-exclamation-triangle me-2"></i>Could not verify location. Please try again.</span>';
+                });
+                
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-map-marker-alt me-2"></i>Verify Delivery Location';
+            },
+            function(error) {
+                status.innerHTML = '<span class="text-danger">Unable to get your location. Please ensure location access is enabled.</span>';
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-map-marker-alt me-2"></i>Verify Delivery Location';
+            }
+        );
+    } else {
+        status.innerHTML = '<span class="text-danger">Geolocation is not supported by your browser.</span>';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-map-marker-alt me-2"></i>Verify Delivery Location';
+    }
+});
+
+// Form validation
+document.getElementById('orderForm').addEventListener('submit', function(e) {
+    const deliveryAddress = document.getElementById('delivery_address').value.trim();
+    if (!deliveryAddress) {
+        e.preventDefault();
+        alert('Please enter a delivery address.');
+        return false;
+    }
+    
+    const quantity = parseInt(document.getElementById('quantity').value);
+    if (quantity < 1 || quantity > 10) {
+        e.preventDefault();
+        alert('Please select a valid quantity (1-10).');
+        return false;
+    }
+});
+
+// Initialize pricing
+updatePricing();
+</script>
+{% endblock %}

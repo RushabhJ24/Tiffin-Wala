@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - Tiffin Service{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <!-- Welcome Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h3><i class="fas fa-tachometer-alt me-2"></i>Admin Dashboard</h3>
+                    <p class="mb-0">Welcome back, {{ current_user.name }}! Manage your tiffin service efficiently.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-3 col-md-6">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="card-title">Today's Orders</h6>
+                            <h3 class="mb-0">{{ stats.total_orders_today }}</h3>
+                        </div>
+                        <div>
+                            <i class="fas fa-shopping-cart fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="card-title">Pending Orders</h6>
+                            <h3 class="mb-0">{{ stats.pending_orders }}</h3>
+                        </div>
+                        <div>
+                            <i class="fas fa-clock fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="card-title">Total Users</h6>
+                            <h3 class="mb-0">{{ stats.total_users }}</h3>
+                        </div>
+                        <div>
+                            <i class="fas fa-users fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="card-title">Menu Items</h6>
+                            <h3 class="mb-0">{{ stats.menu_items_today }}</h3>
+                        </div>
+                        <div>
+                            <i class="fas fa-utensils fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Recent Orders -->
+        <div class="col-lg-8 mb-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>Recent Orders
+                    </h5>
+                    <a href="{{ url_for('admin_orders') }}" class="btn btn-sm btn-outline-primary">
+                        View All Orders
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if recent_orders %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Order #</th>
+                                        <th>Customer</th>
+                                        <th>Item</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for order in recent_orders %}
+                                    <tr>
+                                        <td>#{{ order.id }}</td>
+                                        <td>
+                                            <div>{{ order.customer.name }}</div>
+                                            <small class="text-muted">{{ order.customer.phone }}</small>
+                                        </td>
+                                        <td>
+                                            <div>{{ order.menu_item.name }}</div>
+                                            <small class="text-muted">
+                                                Qty: {{ order.quantity }}
+                                                {% if order.is_roti_only %}
+                                                <span class="badge bg-info">Roti Only</span>
+                                                {% endif %}
+                                            </small>
+                                        </td>
+                                        <td>₹{{ "%.0f" | format(order.total_price) }}</td>
+                                        <td>
+                                            {% if order.status == 'pending' %}
+                                                <span class="badge bg-warning">Pending</span>
+                                            {% elif order.status == 'approved' %}
+                                                <span class="badge bg-success">Approved</span>
+                                            {% elif order.status == 'denied' %}
+                                                <span class="badge bg-danger">Denied</span>
+                                            {% elif order.status == 'delivered' %}
+                                                <span class="badge bg-info">Delivered</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if order.status == 'pending' %}
+                                            <div class="btn-group" role="group">
+                                                <form method="POST" action="{{ url_for('update_order_status', order_id=order.id) }}" class="d-inline">
+                                                    <input type="hidden" name="status" value="approved">
+                                                    <button type="submit" class="btn btn-sm btn-success" title="Approve">
+                                                        <i class="fas fa-check"></i>
+                                                    </button>
+                                                </form>
+                                                <form method="POST" action="{{ url_for('update_order_status', order_id=order.id) }}" class="d-inline">
+                                                    <input type="hidden" name="status" value="denied">
+                                                    <button type="submit" class="btn btn-sm btn-danger" title="Deny">
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-inbox display-4 text-muted mb-3"></i>
+                            <h6 class="text-muted">No orders yet</h6>
+                            <p class="text-muted">Orders will appear here when customers start placing them.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bolt me-2"></i>Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-3">
+                        <a href="{{ url_for('admin_menu') }}" class="btn btn-primary">
+                            <i class="fas fa-utensils me-2"></i>Manage Menu
+                        </a>
+                        <a href="{{ url_for('admin_orders') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-shopping-cart me-2"></i>View All Orders
+                        </a>
+                        <a href="{{ url_for('admin_orders', status='pending') }}" class="btn btn-outline-warning">
+                            <i class="fas fa-clock me-2"></i>Pending Orders
+                        </a>
+                        <button class="btn btn-outline-info" onclick="window.location.reload()">
+                            <i class="fas fa-sync-alt me-2"></i>Refresh Dashboard
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Today's Summary -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-calendar-day me-2"></i>Today's Summary
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="border-end">
+                                <h4 class="text-primary">{{ stats.total_orders_today }}</h4>
+                                <small class="text-muted">Orders</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="text-success">{{ stats.menu_items_today }}</h4>
+                            <small class="text-muted">Menu Items</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

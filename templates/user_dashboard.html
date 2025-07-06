@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Tiffin Service{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <!-- Welcome Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h3><i class="fas fa-user me-2"></i>Welcome, {{ current_user.name }}!</h3>
+                    <p class="mb-0">
+                        <i class="fas fa-map-marker-alt me-2"></i>{{ current_user.address }}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Today's Menu Section -->
+        <div class="col-lg-8 mb-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calendar-day me-2"></i>Today's Menu
+                    </h5>
+                    <a href="{{ url_for('menu') }}" class="btn btn-sm btn-outline-primary">
+                        View All
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if menu_items %}
+                        <div class="row g-3">
+                            {% for item in menu_items %}
+                            <div class="col-md-6">
+                                <div class="card h-100 border-light">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h6 class="card-title mb-0">{{ item.name }}</h6>
+                                            <span class="badge bg-secondary">{{ item.meal_type.title() }}</span>
+                                        </div>
+                                        {% if item.description %}
+                                        <p class="card-text small text-muted">{{ item.description }}</p>
+                                        {% endif %}
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div class="small">
+                                                <div>Full: <strong>₹{{ "%.0f" | format(item.price_full) }}</strong></div>
+                                                <div>Roti: <strong>₹{{ "%.0f" | format(item.price_roti_only) }}</strong></div>
+                                            </div>
+                                            <a href="{{ url_for('place_order', menu_item_id=item.id) }}" 
+                                               class="btn btn-sm btn-primary">
+                                                <i class="fas fa-shopping-cart me-1"></i>Order
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-utensils display-4 text-muted mb-3"></i>
+                            <h6 class="text-muted">No menu items available for today</h6>
+                            <p class="text-muted">Please check back later or contact us for more information.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Order History Section -->
+        <div class="col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history me-2"></i>Recent Orders
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_orders %}
+                        {% for order in recent_orders %}
+                        <div class="d-flex justify-content-between align-items-start mb-3 {% if not loop.last %}border-bottom pb-3{% endif %}">
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1">{{ order.menu_item.name }}</h6>
+                                <small class="text-muted">
+                                    {{ order.created_at.strftime('%b %d, %Y at %I:%M %p') }}
+                                </small>
+                                <div class="small">
+                                    <span class="text-muted">Qty:</span> {{ order.quantity }}
+                                    {% if order.is_roti_only %}
+                                    <span class="badge bg-info ms-1">Roti Only</span>
+                                    {% endif %}
+                                </div>
+                                <div class="small">
+                                    <strong>₹{{ "%.0f" | format(order.total_price) }}</strong>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                {% if order.status == 'pending' %}
+                                    <span class="badge bg-warning">Pending</span>
+                                {% elif order.status == 'approved' %}
+                                    <span class="badge bg-success">Approved</span>
+                                {% elif order.status == 'denied' %}
+                                    <span class="badge bg-danger">Denied</span>
+                                {% elif order.status == 'delivered' %}
+                                    <span class="badge bg-info">Delivered</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-3">
+                            <i class="fas fa-shopping-cart display-6 text-muted mb-2"></i>
+                            <p class="text-muted mb-0">No orders yet</p>
+                            <small class="text-muted">Start by placing your first order!</small>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bolt me-2"></i>Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3 col-sm-6">
+                            <a href="{{ url_for('menu') }}" class="btn btn-outline-primary w-100">
+                                <i class="fas fa-utensils mb-2 d-block"></i>
+                                Browse Menu
+                            </a>
+                        </div>
+                        <div class="col-md-3 col-sm-6">
+                            <button class="btn btn-outline-info w-100" onclick="window.location.reload()">
+                                <i class="fas fa-sync-alt mb-2 d-block"></i>
+                                Refresh Orders
+                            </button>
+                        </div>
+                        <div class="col-md-3 col-sm-6">
+                            <button class="btn btn-outline-success w-100" onclick="window.print()">
+                                <i class="fas fa-print mb-2 d-block"></i>
+                                Print Orders
+                            </button>
+                        </div>
+                        <div class="col-md-3 col-sm-6">
+                            <a href="tel:+1234567890" class="btn btn-outline-warning w-100">
+                                <i class="fas fa-phone mb-2 d-block"></i>
+                                Contact Us
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

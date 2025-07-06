@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Orders - Admin - Tiffin Service{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h3><i class="fas fa-shopping-cart me-2"></i>Manage Orders</h3>
+                    <p class="mb-0">Review and manage customer orders efficiently.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Tabs -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <ul class="nav nav-pills">
+                        <li class="nav-item">
+                            <a class="nav-link {{ 'active' if current_status == 'all' else '' }}" 
+                               href="{{ url_for('admin_orders', status='all') }}">
+                                <i class="fas fa-list me-2"></i>All Orders
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ 'active' if current_status == 'pending' else '' }}" 
+                               href="{{ url_for('admin_orders', status='pending') }}">
+                                <i class="fas fa-clock me-2"></i>Pending
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ 'active' if current_status == 'approved' else '' }}" 
+                               href="{{ url_for('admin_orders', status='approved') }}">
+                                <i class="fas fa-check me-2"></i>Approved
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ 'active' if current_status == 'denied' else '' }}" 
+                               href="{{ url_for('admin_orders', status='denied') }}">
+                                <i class="fas fa-times me-2"></i>Denied
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ 'active' if current_status == 'delivered' else '' }}" 
+                               href="{{ url_for('admin_orders', status='delivered') }}">
+                                <i class="fas fa-truck me-2"></i>Delivered
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Orders Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        Orders 
+                        {% if current_status != 'all' %}
+                        <span class="badge bg-secondary">{{ current_status.title() }}</span>
+                        {% endif %}
+                    </h5>
+                    <button class="btn btn-sm btn-outline-primary" onclick="window.location.reload()">
+                        <i class="fas fa-sync-alt me-2"></i>Refresh
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    {% if orders.items %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Order #</th>
+                                        <th>Customer</th>
+                                        <th>Menu Item</th>
+                                        <th>Details</th>
+                                        <th>Amount</th>
+                                        <th>Date</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for order in orders.items %}
+                                    <tr>
+                                        <td>
+                                            <strong>#{{ order.id }}</strong>
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <strong>{{ order.customer.name }}</strong>
+                                            </div>
+                                            <small class="text-muted">
+                                                <i class="fas fa-phone me-1"></i>{{ order.customer.phone }}
+                                            </small>
+                                            <br>
+                                            <small class="text-muted">
+                                                <i class="fas fa-envelope me-1"></i>{{ order.customer.email }}
+                                            </small>
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <strong>{{ order.menu_item.name }}</strong>
+                                            </div>
+                                            <small class="text-muted">{{ order.menu_item.meal_type.title() }}</small>
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <span class="badge bg-info">Qty: {{ order.quantity }}</span>
+                                                {% if order.is_roti_only %}
+                                                <span class="badge bg-warning">Roti Only</span>
+                                                {% else %}
+                                                <span class="badge bg-success">Full Tiffin</span>
+                                                {% endif %}
+                                            </div>
+                                            {% if order.notes %}
+                                            <small class="text-muted d-block mt-1">
+                                                <i class="fas fa-sticky-note me-1"></i>{{ order.notes }}
+                                            </small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <strong>₹{{ "%.0f" | format(order.total_price) }}</strong>
+                                        </td>
+                                        <td>
+                                            <div>{{ order.order_date.strftime('%b %d, %Y') }}</div>
+                                            <small class="text-muted">{{ order.created_at.strftime('%I:%M %p') }}</small>
+                                        </td>
+                                        <td>
+                                            {% if order.status == 'pending' %}
+                                                <span class="badge bg-warning">Pending</span>
+                                            {% elif order.status == 'approved' %}
+                                                <span class="badge bg-success">Approved</span>
+                                            {% elif order.status == 'denied' %}
+                                                <span class="badge bg-danger">Denied</span>
+                                            {% elif order.status == 'delivered' %}
+                                                <span class="badge bg-info">Delivered</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if order.status == 'pending' %}
+                                            <div class="btn-group" role="group">
+                                                <button type="button" class="btn btn-sm btn-success" 
+                                                        onclick="updateOrderStatus({{ order.id }}, 'approved')"
+                                                        title="Approve Order">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-danger" 
+                                                        onclick="updateOrderStatus({{ order.id }}, 'denied')"
+                                                        title="Deny Order">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </div>
+                                            {% elif order.status == 'approved' %}
+                                            <button type="button" class="btn btn-sm btn-info" 
+                                                    onclick="updateOrderStatus({{ order.id }}, 'delivered')"
+                                                    title="Mark as Delivered">
+                                                <i class="fas fa-truck"></i>
+                                            </button>
+                                            {% else %}
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" 
+                                                    onclick="showOrderDetails({{ order.id }})"
+                                                    title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination -->
+                        {% if orders.pages > 1 %}
+                        <div class="card-footer">
+                            <nav aria-label="Orders pagination">
+                                <ul class="pagination pagination-sm mb-0 justify-content-center">
+                                    {% if orders.has_prev %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('admin_orders', status=current_status, page=orders.prev_num) }}">
+                                            <i class="fas fa-chevron-left"></i>
+                                        </a>
+                                    </li>
+                                    {% endif %}
+                                    
+                                    {% for page_num in orders.iter_pages() %}
+                                        {% if page_num %}
+                                            {% if page_num != orders.page %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="{{ url_for('admin_orders', status=current_status, page=page_num) }}">{{ page_num }}</a>
+                                            </li>
+                                            {% else %}
+                                            <li class="page-item active">
+                                                <span class="page-link">{{ page_num }}</span>
+                                            </li>
+                                            {% endif %}
+                                        {% else %}
+                                        <li class="page-item disabled">
+                                            <span class="page-link">...</span>
+                                        </li>
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if orders.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('admin_orders', status=current_status, page=orders.next_num) }}">
+                                            <i class="fas fa-chevron-right"></i>
+                                        </a>
+                                    </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-inbox display-4 text-muted mb-3"></i>
+                            <h5 class="text-muted">No Orders Found</h5>
+                            <p class="text-muted">
+                                {% if current_status == 'all' %}
+                                No orders have been placed yet.
+                                {% else %}
+                                No {{ current_status }} orders found.
+                                {% endif %}
+                            </p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Order Status Update Modal -->
+<div class="modal fade" id="statusUpdateModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="statusUpdateForm" method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title">Update Order Status</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="status" id="newStatus">
+                    <p id="statusMessage"></p>
+                    <div class="mb-3">
+                        <label for="admin_notes" class="form-label">Admin Notes (Optional)</label>
+                        <textarea class="form-control" id="admin_notes" name="admin_notes" rows="3" 
+                                  placeholder="Add any notes for this status update..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="confirmStatusBtn">Update Status</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function updateOrderStatus(orderId, status) {
+    const modal = new bootstrap.Modal(document.getElementById('statusUpdateModal'));
+    const form = document.getElementById('statusUpdateForm');
+    const statusInput = document.getElementById('newStatus');
+    const messageElement = document.getElementById('statusMessage');
+    const confirmBtn = document.getElementById('confirmStatusBtn');
+    
+    // Set form action
+    form.action = `/admin/order/${orderId}/update`;
+    statusInput.value = status;
+    
+    // Set message and button based on status
+    let message = '';
+    let btnClass = 'btn-primary';
+    let btnText = 'Update Status';
+    
+    switch(status) {
+        case 'approved':
+            message = 'Are you sure you want to approve this order?';
+            btnClass = 'btn-success';
+            btnText = 'Approve Order';
+            break;
+        case 'denied':
+            message = 'Are you sure you want to deny this order? Please provide a reason in the notes.';
+            btnClass = 'btn-danger';
+            btnText = 'Deny Order';
+            break;
+        case 'delivered':
+            message = 'Mark this order as delivered?';
+            btnClass = 'btn-info';
+            btnText = 'Mark Delivered';
+            break;
+    }
+    
+    messageElement.textContent = message;
+    confirmBtn.className = `btn ${btnClass}`;
+    confirmBtn.textContent = btnText;
+    
+    modal.show();
+}
+
+function showOrderDetails(orderId) {
+    // This could be expanded to show a detailed view of the order
+    alert(`Order #${orderId} details would be shown here.`);
+}
+
+// Auto-refresh every 30 seconds for pending orders
+{% if current_status == 'pending' %}
+setInterval(function() {
+    window.location.reload();
+}, 30000);
+{% endif %}
+</script>
+{% endblock %}

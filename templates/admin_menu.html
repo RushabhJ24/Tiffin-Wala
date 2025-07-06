@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Menu - Admin - Tiffin Service{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h3><i class="fas fa-utensils me-2"></i>Manage Menu</h3>
+                    <p class="mb-0">Add, update, and manage daily menu items.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Date Selection and Add Menu Item -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calendar me-2"></i>Select Date
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="GET" action="{{ url_for('admin_menu') }}">
+                        <div class="input-group">
+                            <input type="date" class="form-control" name="date" 
+                                   value="{{ selected_date.strftime('%Y-%m-%d') }}" 
+                                   onchange="this.form.submit()">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-plus me-2"></i>Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addMenuModal">
+                        <i class="fas fa-plus me-2"></i>Add Menu Item
+                    </button>
+                    <button type="button" class="btn btn-outline-info ms-2" onclick="window.location.reload()">
+                        <i class="fas fa-sync-alt me-2"></i>Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Menu Items for Selected Date -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        Menu Items for {{ selected_date.strftime('%B %d, %Y') }}
+                    </h5>
+                    <span class="badge bg-primary">{{ menu_items|length }} items</span>
+                </div>
+                <div class="card-body">
+                    {% if menu_items %}
+                        <div class="row g-4">
+                            {% for item in menu_items %}
+                            <div class="col-lg-4 col-md-6">
+                                <div class="card h-100 {% if not item.is_available %}border-danger{% endif %}">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h6 class="card-title">{{ item.name }}</h6>
+                                            <span class="badge bg-{{ 'warning' if item.meal_type == 'breakfast' else 'primary' if item.meal_type == 'lunch' else 'info' }}">
+                                                {{ item.meal_type.title() }}
+                                            </span>
+                                        </div>
+                                        
+                                        {% if item.description %}
+                                        <p class="card-text small text-muted">{{ item.description }}</p>
+                                        {% endif %}
+                                        
+                                        <div class="row mb-3">
+                                            <div class="col-6">
+                                                <small class="text-muted">Full Tiffin:</small>
+                                                <div><strong>₹{{ "%.0f" | format(item.price_full) }}</strong></div>
+                                            </div>
+                                            <div class="col-6">
+                                                <small class="text-muted">Roti Only:</small>
+                                                <div><strong>₹{{ "%.0f" | format(item.price_roti_only) }}</strong></div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                {% if item.is_available %}
+                                                <span class="badge bg-success">Available</span>
+                                                {% else %}
+                                                <span class="badge bg-danger">Disabled</span>
+                                                {% endif %}
+                                            </div>
+                                            
+                                            <div class="btn-group" role="group">
+                                                <form method="POST" action="{{ url_for('toggle_menu_item', item_id=item.id) }}" class="d-inline">
+                                                    {% if item.is_available %}
+                                                    <button type="submit" class="btn btn-sm btn-warning" title="Disable">
+                                                        <i class="fas fa-eye-slash"></i>
+                                                    </button>
+                                                    {% else %}
+                                                    <button type="submit" class="btn btn-sm btn-success" title="Enable">
+                                                        <i class="fas fa-eye"></i>
+                                                    </button>
+                                                    {% endif %}
+                                                </form>
+                                                
+                                                <button type="button" class="btn btn-sm btn-primary" 
+                                                        onclick="editMenuItem({{ item.id }}, '{{ item.name }}', '{{ item.description }}', '{{ item.meal_type }}', {{ item.price_full }}, {{ item.price_roti_only }})"
+                                                        title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mt-2">
+                                            <small class="text-muted">
+                                                <i class="fas fa-clock me-1"></i>
+                                                Updated: {{ item.updated_at.strftime('%I:%M %p') }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-utensils display-4 text-muted mb-3"></i>
+                            <h5 class="text-muted">No Menu Items for This Date</h5>
+                            <p class="text-muted">Start by adding your first menu item for {{ selected_date.strftime('%B %d, %Y') }}.</p>
+                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addMenuModal">
+                                <i class="fas fa-plus me-2"></i>Add First Menu Item
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Menu Item Modal -->
+<div class="modal fade" id="addMenuModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('add_menu_item') }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-plus me-2"></i>Add Menu Item
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="name" class="form-label">Item Name *</label>
+                            <input type="text" class="form-control" id="name" name="name" 
+                                   placeholder="e.g., Dal Rice, Rajma Chawal" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="meal_type" class="form-label">Meal Type *</label>
+                            <select class="form-select" id="meal_type" name="meal_type" required>
+                                <option value="">Select meal type</option>
+                                <option value="breakfast">Breakfast</option>
+                                <option value="lunch">Lunch</option>
+                                <option value="dinner">Dinner</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="2" 
+                                  placeholder="Brief description of the item (optional)"></textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="price_full" class="form-label">Full Tiffin Price (₹) *</label>
+                            <input type="number" class="form-control" id="price_full" name="price_full" 
+                                   min="0" step="0.01" placeholder="120.00" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="price_roti_only" class="form-label">Roti Only Price (₹) *</label>
+                            <input type="number" class="form-control" id="price_roti_only" name="price_roti_only" 
+                                   min="0" step="0.01" placeholder="40.00" required>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="date" class="form-label">Date *</label>
+                        <input type="date" class="form-control" id="date" name="date" 
+                               value="{{ selected_date.strftime('%Y-%m-%d') }}" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Add Menu Item
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Menu Item Modal -->
+<div class="modal fade" id="editMenuModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="POST" id="editMenuForm">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-edit me-2"></i>Edit Menu Item
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_name" class="form-label">Item Name *</label>
+                            <input type="text" class="form-control" id="edit_name" name="name" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_meal_type" class="form-label">Meal Type *</label>
+                            <select class="form-select" id="edit_meal_type" name="meal_type" required>
+                                <option value="breakfast">Breakfast</option>
+                                <option value="lunch">Lunch</option>
+                                <option value="dinner">Dinner</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit_description" class="form-label">Description</label>
+                        <textarea class="form-control" id="edit_description" name="description" rows="2"></textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_price_full" class="form-label">Full Tiffin Price (₹) *</label>
+                            <input type="number" class="form-control" id="edit_price_full" name="price_full" 
+                                   min="0" step="0.01" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_price_roti_only" class="form-label">Roti Only Price (₹) *</label>
+                            <input type="number" class="form-control" id="edit_price_roti_only" name="price_roti_only" 
+                                   min="0" step="0.01" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Update Menu Item
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function editMenuItem(id, name, description, mealType, priceFull, priceRotiOnly) {
+    // This function would typically be used to edit menu items
+    // For now, we'll show an alert that this feature needs backend implementation
+    alert('Edit functionality requires additional backend routes. Current implementation allows toggle availability only.');
+}
+
+// Auto-refresh menu items every 5 minutes
+setInterval(function() {
+    window.location.reload();
+}, 300000);
+
+// Form validation
+document.addEventListener('DOMContentLoaded', function() {
+    const addForm = document.querySelector('#addMenuModal form');
+    
+    addForm.addEventListener('submit', function(e) {
+        const priceFull = parseFloat(document.getElementById('price_full').value);
+        const priceRoti = parseFloat(document.getElementById('price_roti_only').value);
+        
+        if (priceRoti >= priceFull) {
+            e.preventDefault();
+            alert('Roti only price should be less than full tiffin price.');
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %}
