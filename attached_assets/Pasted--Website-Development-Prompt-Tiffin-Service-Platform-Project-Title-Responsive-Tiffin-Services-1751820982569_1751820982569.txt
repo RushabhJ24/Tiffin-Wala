@@ -1,0 +1,55 @@
+🧾 Website Development Prompt: Tiffin Service Platform
+
+Project Title:
+Responsive Tiffin Services Website with Admin & User Functionality
+
+Objective:
+Build a modern, responsive, and user-friendly website for a Tiffin Service business that enables seamless interaction between admin and users (customers), allowing for daily menu updates, order placement, and area-based service validation.
+
+🔧 Core Features
+
+Admin Panel
+Admin can add/update the daily menu (breakfast/lunch/dinner or customized).
+Admin can set/reset the price of a full tiffin or item-wise (e.g., full meal or just rotis).
+
+Admin can view incoming orders and choose to approve or deny them.
+
+Admin defines the serviceable area (within 5 km radius) using location-based logic (GPS or address pinning).
+
+User Functionality
+Users can register/login to the platform.
+Users must provide their exact delivery address.
+
+Users can choose the quantity of tiffins required per day.
+
+Users have an option to request only rotis instead of full tiffin.
+
+If a user is beyond 5 km, they will see a message:
+"Sorry, no services are available at your location."
+
+🧑‍💻 Technical Requirements
+Fully responsive UI (mobile, tablet, and desktop compatible).
+
+Clean and intuitive UX with focus on ease of ordering and daily engagement.
+
+Admin dashboard for managing menu, pricing, and orders.
+
+User dashboard for order history, current order status, and profile info.
+
+Location services integrated to check user’s delivery eligibility (within 5 km).
+
+Secure registration & login system.
+
+📱 Optional Enhancements (if needed)
+WhatsApp notification integration for order confirmation.
+Payments are cash on delivery
+
+Feedback and rating system.
+
+Admin can see the past and current orders
+Also admin can approve or deny the order
+Add additional things whatever u think which great fits for this
+
+
+Add simple user registration and login authentication do not use Replit or any other authentication
+Use database of localhost postgresql and give .env files and environmental variables as well
