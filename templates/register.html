@@ -168,19 +168,34 @@ let map;
 let marker;
 let isMapInitialized = false;
 
-function initLocationMap() {
+async function initLocationMap() {
     if (isMapInitialized) return;
     
+    // Get current service area coordinates
+    let centerLat = 20.457316;
+    let centerLng = 75.016754;
+    
+    try {
+        const response = await fetch('/api/service-config');
+        if (response.ok) {
+            const config = await response.json();
+            centerLat = config.central_lat;
+            centerLng = config.central_lng;
+        }
+    } catch (error) {
+        console.error('Error loading service config:', error);
+    }
+    
     // Initialize map centered on service area
-    map = L.map('map').setView([20.457316, 75.016754], 13);
+    map = L.map('map').setView([centerLat, centerLng], 13);
     
     // Add OpenStreetMap tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors'
     }).addTo(map);
     
-    // Add marker
-    marker = L.marker([21.1458004, 75.016754], {
+    // Add marker at center
+    marker = L.marker([centerLat, centerLng], {
         draggable: true
     }).addTo(map);
     
@@ -336,8 +351,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Function to show location picker dialog
     function showLocationPicker() {
-        const lat = prompt('Enter your latitude (e.g., 21.1458):');
-        const lng = prompt('Enter your longitude (e.g., 79.0881):');
+        const lat = prompt('Enter your latitude (e.g., 20.458):');
+        const lng = prompt('Enter your longitude (e.g., 75.017):');
         
         if (lat && lng) {
             const latitude = parseFloat(lat);

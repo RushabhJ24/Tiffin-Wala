@@ -97,7 +97,12 @@ def register():
             flash('Registration failed. Please try again.', 'danger')
             app.logger.error(f"Registration error: {e}")
     
-    return render_template('register.html')
+    # Get current central coordinates for template
+    central_lat, central_lng = Settings.get_central_coordinates()
+    
+    return render_template('register.html', 
+                         central_lat=central_lat, 
+                         central_lng=central_lng)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -402,7 +407,14 @@ def admin_users():
         page=page, per_page=20, error_out=False
     )
     
-    return render_template('admin_users.html', users=users, status_filter=status_filter)
+    # Get current central coordinates for location functions
+    central_lat, central_lng = Settings.get_central_coordinates()
+    
+    return render_template('admin_users.html', 
+                         users=users, 
+                         status_filter=status_filter,
+                         central_lat=central_lat,
+                         central_lng=central_lng)
 
 @app.route('/admin/user/<int:user_id>/toggle', methods=['POST'])
 @admin_required

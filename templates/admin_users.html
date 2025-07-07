@@ -301,26 +301,59 @@ function showUserDetails(userId) {
         });
 }
 
-function showUserLocation(userId, lat, lng, userName) {
-    const adminLat = 21.1458004;
-    const adminLng = 79.0881546;
-    const distance = calculateDistance(adminLat, adminLng, lat, lng);
-    
-    const locationInfo = `
+async function showUserLocation(userId, lat, lng, userName) {
+    try {
+        // Get current admin coordinates from API
+        const response = await fetch('/api/service-config');
+        let adminLat = 20.457316;
+        let adminLng = 75.016754;
+        let serviceRadius = 5;
+        
+        if (response.ok) {
+            const config = await response.json();
+            adminLat = config.central_lat;
+            adminLng = config.central_lng;
+            serviceRadius = config.service_radius;
+        }
+        
+        const distance = calculateDistance(adminLat, adminLng, lat, lng);
+        
+        const locationInfo = `
 User: ${userName}
 
 Location Details:
 • User Location: ${lat.toFixed(6)}, ${lng.toFixed(6)}
-• Admin Location: ${adminLat}, ${adminLng}
+• Admin Location: ${adminLat.toFixed(6)}, ${adminLng.toFixed(6)}
+• Distance: ${distance.toFixed(2)} km
+• Service Status: ${distance <= serviceRadius ? 'Within service area' : 'Outside service area'}
+
+Would you like to view directions?
+        `;
+        
+        if (confirm(locationInfo)) {
+            const url = `https://www.google.com/maps/dir/${adminLat},${adminLng}/${lat},${lng}`;
+            window.open(url, '_blank');
+        }
+    } catch (error) {
+        console.error('Error getting service config:', error);
+        // Fallback behavior
+        const distance = calculateDistance(20.457316, 75.016754, lat, lng);
+        const locationInfo = `
+User: ${userName}
+
+Location Details:
+• User Location: ${lat.toFixed(6)}, ${lng.toFixed(6)}
+• Admin Location: 20.457316, 75.016754 (fallback)
 • Distance: ${distance.toFixed(2)} km
 • Service Status: ${distance <= 5 ? 'Within service area' : 'Outside service area'}
 
 Would you like to view directions?
-    `;
-    
-    if (confirm(locationInfo)) {
-        const url = `https://www.google.com/maps/dir/${adminLat},${adminLng}/${lat},${lng}`;
-        window.open(url, '_blank');
+        `;
+        
+        if (confirm(locationInfo)) {
+            const url = `https://www.google.com/maps/dir/20.457316,75.016754/${lat},${lng}`;
+            window.open(url, '_blank');
+        }
     }
 }
 
