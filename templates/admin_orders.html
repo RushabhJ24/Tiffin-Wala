@@ -334,30 +334,67 @@ function initAdminMaps() {
     directionsRenderer = new google.maps.DirectionsRenderer();
 }
 
-function showOrderMap(orderId, lat, lng, customerName) {
-    // For demo purposes, show location info instead of map
-    // In production, this would show the Google Maps interface
-    const adminLat = 20.457316;
-    const adminLng = 75.016754;
-    const distance = calculateDistance(adminLat, adminLng, lat, lng);
-    
-    const locationInfo = `
+async function showOrderMap(orderId, lat, lng, customerName) {
+    try {
+        // Get current admin coordinates from API
+        const response = await fetch('/api/service-config');
+        let adminLat = 20.457316;
+        let adminLng = 75.016754;
+        
+        if (response.ok) {
+            const config = await response.json();
+            adminLat = config.central_lat;
+            adminLng = config.central_lng;
+        }
+        
+        const distance = calculateDistance(adminLat, adminLng, lat, lng);
+        
+        const locationInfo = `
 Order #${orderId} - ${customerName}
 
 Location Details:
 • Customer Location: ${lat.toFixed(6)}, ${lng.toFixed(6)}
-• Admin Location: ${adminLat}, ${adminLng}
+• Admin Location: ${adminLat.toFixed(6)}, ${adminLng.toFixed(6)}
 • Distance: ${distance.toFixed(2)} km
 • Estimated delivery time: ${Math.ceil(distance * 3)} minutes (assuming 20km/h avg speed)
 
 Click 'Navigate' to open Google Maps for directions.
-    `;
-    
-    alert(locationInfo);
+        `;
+        
+        alert(locationInfo);
+    } catch (error) {
+        console.error('Error getting service config:', error);
+        // Fallback behavior
+        const distance = calculateDistance(20.457316, 75.016754, lat, lng);
+        const locationInfo = `
+Order #${orderId} - ${customerName}
+
+Location Details:
+• Customer Location: ${lat.toFixed(6)}, ${lng.toFixed(6)}
+• Admin Location: 20.457316, 75.016754 (fallback)
+• Distance: ${distance.toFixed(2)} km
+• Estimated delivery time: ${Math.ceil(distance * 3)} minutes
+
+Click 'Navigate' to open Google Maps for directions.
+        `;
+        alert(locationInfo);
+    }
 }
 
-function initOrderMap(destLat, destLng) {
-    const adminLocation = { lat: 21.1458004, lng: 79.0881546 }; // Your admin location
+async function initOrderMap(destLat, destLng) {
+    // Get current admin coordinates from API
+    let adminLocation = { lat: 20.457316, lng: 75.016754 }; // Default fallback
+    
+    try {
+        const response = await fetch('/api/service-config');
+        if (response.ok) {
+            const config = await response.json();
+            adminLocation = { lat: config.central_lat, lng: config.central_lng };
+        }
+    } catch (error) {
+        console.error('Error getting service config:', error);
+    }
+    
     const customerLocation = { lat: destLat, lng: destLng };
     
     // Initialize map
@@ -433,19 +470,40 @@ function initOrderMap(destLat, destLng) {
     });
 }
 
-function openNavigation(lat, lng, address) {
-    // Calculate distance for display
-    const adminLat = 20.457316;
-    const adminLng = 75.016754;
-    const distance = calculateDistance(adminLat, adminLng, lat, lng);
-    
-    // Show navigation options
-    const confirmNavigate = confirm(`Navigate to customer location?\n\nDistance: ${distance.toFixed(2)} km\nAddress: ${address}\n\nThis will open Google Maps in a new tab.`);
-    
-    if (confirmNavigate) {
-        // Open Google Maps with navigation
-        const url = `https://www.google.com/maps/dir/${adminLat},${adminLng}/${lat},${lng}`;
-        window.open(url, '_blank');
+async function openNavigation(lat, lng, address) {
+    try {
+        // Get current admin coordinates from API
+        const response = await fetch('/api/service-config');
+        let adminLat = 20.457316;
+        let adminLng = 75.016754;
+        
+        if (response.ok) {
+            const config = await response.json();
+            adminLat = config.central_lat;
+            adminLng = config.central_lng;
+        }
+        
+        // Calculate distance for display
+        const distance = calculateDistance(adminLat, adminLng, lat, lng);
+        
+        // Show navigation options
+        const confirmNavigate = confirm(`Navigate to customer location?\n\nDistance: ${distance.toFixed(2)} km\nAddress: ${address}\n\nThis will open Google Maps in a new tab.`);
+        
+        if (confirmNavigate) {
+            // Open Google Maps with navigation
+            const url = `https://www.google.com/maps/dir/${adminLat},${adminLng}/${lat},${lng}`;
+            window.open(url, '_blank');
+        }
+    } catch (error) {
+        console.error('Error getting service config:', error);
+        // Fallback to static coordinates
+        const distance = calculateDistance(20.457316, 75.016754, lat, lng);
+        const confirmNavigate = confirm(`Navigate to customer location?\n\nDistance: ${distance.toFixed(2)} km\nAddress: ${address}\n\nThis will open Google Maps in a new tab.`);
+        
+        if (confirmNavigate) {
+            const url = `https://www.google.com/maps/dir/20.457316,75.016754/${lat},${lng}`;
+            window.open(url, '_blank');
+        }
     }
 }
 

@@ -279,7 +279,14 @@ def admin_orders():
         page=page, per_page=20, error_out=False
     )
     
-    return render_template('admin_orders.html', orders=orders, current_status=status_filter)
+    # Get current central coordinates for navigation
+    central_lat, central_lng = Settings.get_central_coordinates()
+    
+    return render_template('admin_orders.html', 
+                         orders=orders, 
+                         current_status=status_filter,
+                         central_lat=central_lat,
+                         central_lng=central_lng)
 
 @app.route('/admin/order/<int:order_id>/update', methods=['POST'])
 @admin_required
