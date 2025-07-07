@@ -95,6 +95,20 @@
                                     </button>
                                     <div id="locationStatus" class="mt-2"></div>
                                 </div>
+                                
+                                <!-- Map container -->
+                                <div id="mapContainer" class="mt-3" style="display: none;">
+                                    <div id="map" style="height: 300px; border-radius: 0.375rem; border: 1px solid #dee2e6;"></div>
+                                    <div class="mt-2 text-center">
+                                        <button type="button" class="btn btn-success btn-sm" id="confirmLocation">
+                                            <i class="fas fa-check me-2"></i>Confirm Location
+                                        </button>
+                                        <button type="button" class="btn btn-secondary btn-sm" id="cancelLocation">
+                                            <i class="fas fa-times me-2"></i>Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                                
                                 <div class="form-text">
                                     <i class="fas fa-info-circle me-1"></i>
                                     Make sure the address is within our 5km service area.
@@ -169,6 +183,9 @@
 {% endblock %}
 
 {% block extra_scripts %}
+<!-- Leaflet OpenStreetMap (free alternative to Google Maps) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const menuItem = {
     name: "{{ menu_item.name }}",
@@ -201,62 +218,104 @@ function updatePricing() {
     document.getElementById('total-price').textContent = Math.round(totalPrice);
 }
 
+let orderMap;
+let orderMarker;
+let isOrderMapInitialized = false;
+
+function initOrderLocationMap() {
+    if (isOrderMapInitialized) return;
+    
+    // Initialize map centered on service area
+    orderMap = L.map('map').setView([20.457316, 75.016754], 13);
+    
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(orderMap);
+    
+    // Set initial marker position from user's current location or default
+    const currentLat = {{ current_user.latitude or 20.457316 }};
+    const currentLng = {{ current_user.longitude or 75.016754 }};
+    
+    // Add marker
+    orderMarker = L.marker([currentLat, currentLng], {
+        draggable: true
+    }).addTo(orderMap);
+    
+    // Handle marker drag
+    orderMarker.on('dragend', function(e) {
+        updateOrderLocationFromMarker();
+    });
+    
+    // Handle map click
+    orderMap.on('click', function(e) {
+        orderMarker.setLatLng(e.latlng);
+        updateOrderLocationFromMarker();
+    });
+    
+    isOrderMapInitialized = true;
+}
+
+function updateOrderLocationFromMarker() {
+    const position = orderMarker.getLatLng();
+    document.getElementById('delivery_lat').value = position.lat;
+    document.getElementById('delivery_lng').value = position.lng;
+    
+    // Update address with coordinates
+    document.getElementById('delivery_address').value = `Location: ${position.lat.toFixed(6)}, ${position.lng.toFixed(6)}`;
+}
+
 // Location selection
 document.getElementById('selectOnMap').addEventListener('click', function() {
-    const btn = this;
-    const status = document.getElementById('locationStatus');
+    const mapContainer = document.getElementById('mapContainer');
+    mapContainer.style.display = 'block';
+    initOrderLocationMap();
+    mapContainer.scrollIntoView({ behavior: 'smooth' });
+});
+
+// Confirm location from map
+document.getElementById('confirmLocation').addEventListener('click', function() {
+    const lat = parseFloat(document.getElementById('delivery_lat').value);
+    const lng = parseFloat(document.getElementById('delivery_lng').value);
     
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Getting Location...';
-    status.innerHTML = '<span class="text-info">Getting your current location...</span>';
-    
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-            function(position) {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
-                
-                document.getElementById('delivery_lat').value = lat;
-                document.getElementById('delivery_lng').value = lng;
-                
-                // Check if location is serviceable
-                fetch('/api/check-location', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        latitude: lat,
-                        longitude: lng
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.serviceable) {
-                        status.innerHTML = '<span class="text-success"><i class="fas fa-check-circle me-2"></i>Location verified! We deliver to your area.</span>';
-                    } else {
-                        status.innerHTML = '<span class="text-danger"><i class="fas fa-times-circle me-2"></i>Sorry, we don\'t deliver to your current location.</span>';
-                    }
-                })
-                .catch(error => {
-                    status.innerHTML = '<span class="text-warning"><i class="fas fa-exclamation-triangle me-2"></i>Could not verify location. Please try again.</span>';
-                });
-                
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-map-marker-alt me-2"></i>Select on Map';
-            },
-            function(error) {
-                status.innerHTML = '<span class="text-danger">Unable to get your location. Please ensure location access is enabled.</span>';
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-map-marker-alt me-2"></i>Select on Map';
-            }
-        );
+    if (lat && lng) {
+        checkOrderLocationServiceability(lat, lng);
+        document.getElementById('mapContainer').style.display = 'none';
     } else {
-        status.innerHTML = '<span class="text-danger">Geolocation is not supported by your browser.</span>';
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-map-marker-alt me-2"></i>Select on Map';
+        alert('Please select a location on the map first.');
     }
 });
+
+// Cancel location selection
+document.getElementById('cancelLocation').addEventListener('click', function() {
+    document.getElementById('mapContainer').style.display = 'none';
+});
+
+// Function to check location serviceability
+function checkOrderLocationServiceability(lat, lng) {
+    const status = document.getElementById('locationStatus');
+    fetch('/api/check-location', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            latitude: lat,
+            longitude: lng
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.serviceable) {
+            status.innerHTML = '<span class="text-success"><i class="fas fa-check-circle me-2"></i>Location verified! We deliver to your area.</span>';
+        } else {
+            status.innerHTML = '<span class="text-danger"><i class="fas fa-times-circle me-2"></i>Sorry, we don\'t deliver to your location.</span>';
+        }
+    })
+    .catch(error => {
+        status.innerHTML = '<span class="text-warning"><i class="fas fa-exclamation-triangle me-2"></i>Could not verify location. Please try again.</span>';
+    });
+}
 
 // Form validation
 document.getElementById('orderForm').addEventListener('submit', function(e) {

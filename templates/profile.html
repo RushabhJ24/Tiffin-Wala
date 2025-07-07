@@ -46,6 +46,20 @@
                                 </button>
                                 <div id="profileLocationStatus" class="mt-2"></div>
                             </div>
+                            
+                            <!-- Map container -->
+                            <div id="profileMapContainer" class="mt-3" style="display: none;">
+                                <div id="profileMap" style="height: 300px; border-radius: 0.375rem; border: 1px solid #dee2e6;"></div>
+                                <div class="mt-2 text-center">
+                                    <button type="button" class="btn btn-success btn-sm" id="confirmProfileLocation">
+                                        <i class="fas fa-check me-2"></i>Confirm Location
+                                    </button>
+                                    <button type="button" class="btn btn-secondary btn-sm" id="cancelProfileLocation">
+                                        <i class="fas fa-times me-2"></i>Cancel
+                                    </button>
+                                </div>
+                            </div>
+                            
                             <!-- Hidden location fields -->
                             <input type="hidden" id="latitude" name="latitude" value="{{ current_user.latitude or '' }}">
                             <input type="hidden" id="longitude" name="longitude" value="{{ current_user.longitude or '' }}">
@@ -87,6 +101,9 @@
 {% endblock %}
 
 {% block extra_scripts %}
+<!-- Leaflet OpenStreetMap (free alternative to Google Maps) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('profileForm');
@@ -125,62 +142,104 @@ document.addEventListener('DOMContentLoaded', function() {
         validateCurrentPassword();
     });
 
+    let profileMap;
+    let profileMarker;
+    let isProfileMapInitialized = false;
+
+    function initProfileLocationMap() {
+        if (isProfileMapInitialized) return;
+        
+        // Initialize map centered on service area
+        profileMap = L.map('profileMap').setView([20.457316, 75.016754], 13);
+        
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(profileMap);
+        
+        // Set initial marker position from user's current location or default
+        const currentLat = {{ current_user.latitude or 20.457316 }};
+        const currentLng = {{ current_user.longitude or 75.016754 }};
+        
+        // Add marker
+        profileMarker = L.marker([currentLat, currentLng], {
+            draggable: true
+        }).addTo(profileMap);
+        
+        // Handle marker drag
+        profileMarker.on('dragend', function(e) {
+            updateProfileLocationFromMarker();
+        });
+        
+        // Handle map click
+        profileMap.on('click', function(e) {
+            profileMarker.setLatLng(e.latlng);
+            updateProfileLocationFromMarker();
+        });
+        
+        isProfileMapInitialized = true;
+    }
+
+    function updateProfileLocationFromMarker() {
+        const position = profileMarker.getLatLng();
+        document.getElementById('latitude').value = position.lat;
+        document.getElementById('longitude').value = position.lng;
+        
+        // Update address with coordinates
+        document.getElementById('address').value = `Location: ${position.lat.toFixed(6)}, ${position.lng.toFixed(6)}`;
+    }
+
     // Location selection functionality
     document.getElementById('selectLocationOnMap').addEventListener('click', function() {
-        const btn = this;
-        const status = document.getElementById('profileLocationStatus');
+        const mapContainer = document.getElementById('profileMapContainer');
+        mapContainer.style.display = 'block';
+        initProfileLocationMap();
+        mapContainer.scrollIntoView({ behavior: 'smooth' });
+    });
+
+    // Confirm location from map
+    document.getElementById('confirmProfileLocation').addEventListener('click', function() {
+        const lat = parseFloat(document.getElementById('latitude').value);
+        const lng = parseFloat(document.getElementById('longitude').value);
         
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Getting Location...';
-        status.innerHTML = '<span class="text-info">Getting your current location...</span>';
-        
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                function(position) {
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
-                    
-                    document.getElementById('latitude').value = lat;
-                    document.getElementById('longitude').value = lng;
-                    
-                    // Check if location is serviceable
-                    fetch('/api/check-location', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            latitude: lat,
-                            longitude: lng
-                        })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.serviceable) {
-                            status.innerHTML = `<span class="text-success"><i class="fas fa-check-circle me-2"></i>Location updated! (${lat.toFixed(6)}, ${lng.toFixed(6)})</span>`;
-                        } else {
-                            status.innerHTML = '<span class="text-warning"><i class="fas fa-exclamation-triangle me-2"></i>Location updated, but it may be outside our service area.</span>';
-                        }
-                    })
-                    .catch(error => {
-                        status.innerHTML = `<span class="text-info"><i class="fas fa-map-marker-alt me-2"></i>Location updated! (${lat.toFixed(6)}, ${lng.toFixed(6)})</span>`;
-                    });
-                    
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-map-marker-alt me-2"></i>Select on Map';
-                },
-                function(error) {
-                    status.innerHTML = '<span class="text-danger">Unable to get your location. Please ensure location access is enabled.</span>';
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-map-marker-alt me-2"></i>Select on Map';
-                }
-            );
+        if (lat && lng) {
+            checkProfileLocationServiceability(lat, lng);
+            document.getElementById('profileMapContainer').style.display = 'none';
         } else {
-            status.innerHTML = '<span class="text-danger">Geolocation is not supported by your browser.</span>';
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-map-marker-alt me-2"></i>Select on Map';
+            alert('Please select a location on the map first.');
         }
     });
+
+    // Cancel location selection
+    document.getElementById('cancelProfileLocation').addEventListener('click', function() {
+        document.getElementById('profileMapContainer').style.display = 'none';
+    });
+
+    // Function to check location serviceability
+    function checkProfileLocationServiceability(lat, lng) {
+        const status = document.getElementById('profileLocationStatus');
+        fetch('/api/check-location', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                latitude: lat,
+                longitude: lng
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.serviceable) {
+                status.innerHTML = `<span class="text-success"><i class="fas fa-check-circle me-2"></i>Location updated! (${lat.toFixed(6)}, ${lng.toFixed(6)})</span>`;
+            } else {
+                status.innerHTML = '<span class="text-warning"><i class="fas fa-exclamation-triangle me-2"></i>Location updated, but it may be outside our service area.</span>';
+            }
+        })
+        .catch(error => {
+            status.innerHTML = `<span class="text-info"><i class="fas fa-map-marker-alt me-2"></i>Location updated! (${lat.toFixed(6)}, ${lng.toFixed(6)})</span>`;
+        });
+    }
 });
 </script>
 {% endblock %}
