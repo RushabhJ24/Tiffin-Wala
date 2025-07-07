@@ -36,6 +36,7 @@ db.init_app(app)
 with app.app_context():
     # Import models to ensure tables are created
     import models  # noqa: F401
+    import auth  # noqa: F401
     db.create_all()
     
     # Create admin user if it doesn't exist
