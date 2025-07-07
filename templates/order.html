@@ -89,6 +89,12 @@
                                 <label for="delivery_address" class="form-label">Delivery Address</label>
                                 <textarea class="form-control" id="delivery_address" name="delivery_address" rows="3" 
                                           placeholder="Enter delivery address">{{ current_user.address }}</textarea>
+                                <div class="mt-2">
+                                    <button type="button" class="btn btn-outline-primary btn-sm" id="selectOnMap">
+                                        <i class="fas fa-map-marker-alt me-2"></i>Select on Map
+                                    </button>
+                                    <div id="locationStatus" class="mt-2"></div>
+                                </div>
                                 <div class="form-text">
                                     <i class="fas fa-info-circle me-1"></i>
                                     Make sure the address is within our 5km service area.
@@ -195,14 +201,14 @@ function updatePricing() {
     document.getElementById('total-price').textContent = Math.round(totalPrice);
 }
 
-// Location verification
-document.getElementById('verifyLocation').addEventListener('click', function() {
+// Location selection
+document.getElementById('selectOnMap').addEventListener('click', function() {
     const btn = this;
     const status = document.getElementById('locationStatus');
     
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Verifying...';
-    status.innerHTML = '<span class="text-info">Checking delivery location...</span>';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Getting Location...';
+    status.innerHTML = '<span class="text-info">Getting your current location...</span>';
     
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
@@ -237,18 +243,18 @@ document.getElementById('verifyLocation').addEventListener('click', function() {
                 });
                 
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-map-marker-alt me-2"></i>Verify Delivery Location';
+                btn.innerHTML = '<i class="fas fa-map-marker-alt me-2"></i>Select on Map';
             },
             function(error) {
                 status.innerHTML = '<span class="text-danger">Unable to get your location. Please ensure location access is enabled.</span>';
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-map-marker-alt me-2"></i>Verify Delivery Location';
+                btn.innerHTML = '<i class="fas fa-map-marker-alt me-2"></i>Select on Map';
             }
         );
     } else {
         status.innerHTML = '<span class="text-danger">Geolocation is not supported by your browser.</span>';
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-map-marker-alt me-2"></i>Verify Delivery Location';
+        btn.innerHTML = '<i class="fas fa-map-marker-alt me-2"></i>Select on Map';
     }
 });
 

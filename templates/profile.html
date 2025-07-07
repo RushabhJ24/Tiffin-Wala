@@ -40,6 +40,15 @@
                         <div class="mb-3">
                             <label for="address" class="form-label">Address</label>
                             <textarea class="form-control" id="address" name="address" rows="3" required>{{ current_user.address }}</textarea>
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-outline-primary btn-sm" id="selectLocationOnMap">
+                                    <i class="fas fa-map-marker-alt me-2"></i>Select on Map
+                                </button>
+                                <div id="profileLocationStatus" class="mt-2"></div>
+                            </div>
+                            <!-- Hidden location fields -->
+                            <input type="hidden" id="latitude" name="latitude" value="{{ current_user.latitude or '' }}">
+                            <input type="hidden" id="longitude" name="longitude" value="{{ current_user.longitude or '' }}">
                         </div>
 
                         <hr class="my-4">
@@ -114,6 +123,63 @@ document.addEventListener('DOMContentLoaded', function() {
     form.addEventListener('submit', function(e) {
         validatePasswords();
         validateCurrentPassword();
+    });
+
+    // Location selection functionality
+    document.getElementById('selectLocationOnMap').addEventListener('click', function() {
+        const btn = this;
+        const status = document.getElementById('profileLocationStatus');
+        
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Getting Location...';
+        status.innerHTML = '<span class="text-info">Getting your current location...</span>';
+        
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    
+                    document.getElementById('latitude').value = lat;
+                    document.getElementById('longitude').value = lng;
+                    
+                    // Check if location is serviceable
+                    fetch('/api/check-location', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            latitude: lat,
+                            longitude: lng
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.serviceable) {
+                            status.innerHTML = `<span class="text-success"><i class="fas fa-check-circle me-2"></i>Location updated! (${lat.toFixed(6)}, ${lng.toFixed(6)})</span>`;
+                        } else {
+                            status.innerHTML = '<span class="text-warning"><i class="fas fa-exclamation-triangle me-2"></i>Location updated, but it may be outside our service area.</span>';
+                        }
+                    })
+                    .catch(error => {
+                        status.innerHTML = `<span class="text-info"><i class="fas fa-map-marker-alt me-2"></i>Location updated! (${lat.toFixed(6)}, ${lng.toFixed(6)})</span>`;
+                    });
+                    
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-map-marker-alt me-2"></i>Select on Map';
+                },
+                function(error) {
+                    status.innerHTML = '<span class="text-danger">Unable to get your location. Please ensure location access is enabled.</span>';
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-map-marker-alt me-2"></i>Select on Map';
+                }
+            );
+        } else {
+            status.innerHTML = '<span class="text-danger">Geolocation is not supported by your browser.</span>';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-map-marker-alt me-2"></i>Select on Map';
+        }
     });
 });
 </script>

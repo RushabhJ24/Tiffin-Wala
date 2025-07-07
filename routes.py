@@ -356,6 +356,13 @@ def update_profile():
         current_user.phone = phone
         current_user.address = address
         
+        # Update location if provided
+        latitude = request.form.get('latitude', type=float)
+        longitude = request.form.get('longitude', type=float)
+        if latitude is not None and longitude is not None:
+            current_user.latitude = latitude
+            current_user.longitude = longitude
+        
         if new_password:
             current_user.password_hash = generate_password_hash(new_password)
         

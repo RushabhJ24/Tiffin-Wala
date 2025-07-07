@@ -36,17 +36,25 @@ class LocationService {
      * Initialize event listeners
      */
     initializeEventListeners() {
-        // Listen for location buttons
-        document.addEventListener('click', (e) => {
-            if (e.target.matches('#getCurrentLocation, .get-location-btn')) {
-                e.preventDefault();
-                this.getCurrentLocation(e.target);
-            }
-            
-            if (e.target.matches('#verifyLocation, .verify-location-btn')) {
-                e.preventDefault();
-                this.verifyCurrentLocation(e.target);
-            }
+        // Wait for DOM to be fully loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            // Listen for location buttons
+            document.addEventListener('click', (e) => {
+                if (e.target.matches('#getCurrentLocation, .get-location-btn')) {
+                    e.preventDefault();
+                    this.getCurrentLocation(e.target);
+                }
+                
+                if (e.target.matches('#verifyLocation, .verify-location-btn')) {
+                    e.preventDefault();
+                    this.verifyCurrentLocation(e.target);
+                }
+                
+                if (e.target.matches('#selectOnMap, .select-on-map-btn')) {
+                    e.preventDefault();
+                    this.getCurrentLocation(e.target);
+                }
+            });
         });
 
         // Listen for address input changes
