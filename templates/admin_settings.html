@@ -92,16 +92,17 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-let settingsMap;
-let settingsMarker;
-let isSettingsMapInitialized = false;
+var settingsMap;
+var settingsMarker;
+var radiusCircle;
+var isSettingsMapInitialized = false;
 
 function initSettingsLocationMap() {
     if (isSettingsMapInitialized) return;
     
     // Initialize map centered on current central location
-    const currentLat = {{ central_lat }};
-    const currentLng = {{ central_lng }};
+    var currentLat = {{ central_lat }};
+    var currentLng = {{ central_lng }};
     
     settingsMap = L.map('map').setView([currentLat, currentLng], 13);
     
@@ -116,8 +117,8 @@ function initSettingsLocationMap() {
     }).addTo(settingsMap);
     
     // Add service radius circle
-    const serviceRadius = {{ service_radius }} * 1000; // Convert to meters
-    const radiusCircle = L.circle([currentLat, currentLng], {
+    var serviceRadius = {{ service_radius }} * 1000; // Convert to meters
+    radiusCircle = L.circle([currentLat, currentLng], {
         color: 'blue',
         fillColor: '#add8e6',
         fillOpacity: 0.2,
@@ -138,9 +139,11 @@ function initSettingsLocationMap() {
     });
     
     function updateRadiusCircle() {
-        const position = settingsMarker.getLatLng();
-        const radius = parseFloat(document.getElementById('service_radius').value) * 1000;
-        settingsMap.removeLayer(radiusCircle);
+        var position = settingsMarker.getLatLng();
+        var radius = parseFloat(document.getElementById('service_radius').value) * 1000;
+        if (radiusCircle) {
+            settingsMap.removeLayer(radiusCircle);
+        }
         radiusCircle = L.circle([position.lat, position.lng], {
             color: 'blue',
             fillColor: '#add8e6',
@@ -153,69 +156,78 @@ function initSettingsLocationMap() {
 }
 
 function updateSettingsLocationFromMarker() {
-    const position = settingsMarker.getLatLng();
+    var position = settingsMarker.getLatLng();
     document.getElementById('central_lat').value = position.lat.toFixed(6);
     document.getElementById('central_lng').value = position.lng.toFixed(6);
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Select central location on map
-    document.getElementById('selectCentralLocation').addEventListener('click', function() {
-        const mapContainer = document.getElementById('mapContainer');
-        mapContainer.style.display = 'block';
-        initSettingsLocationMap();
-        mapContainer.scrollIntoView({ behavior: 'smooth' });
-    });
+    var selectButton = document.getElementById('selectCentralLocation');
+    var confirmButton = document.getElementById('confirmCentralLocation');
+    var cancelButton = document.getElementById('cancelCentralLocation');
+    var settingsForm = document.getElementById('settingsForm');
+    
+    if (selectButton) {
+        selectButton.addEventListener('click', function() {
+            var mapContainer = document.getElementById('mapContainer');
+            mapContainer.style.display = 'block';
+            initSettingsLocationMap();
+            mapContainer.scrollIntoView({ behavior: 'smooth' });
+        });
+    }
 
-    // Confirm location from map
-    document.getElementById('confirmCentralLocation').addEventListener('click', function() {
-        const lat = parseFloat(document.getElementById('central_lat').value);
-        const lng = parseFloat(document.getElementById('central_lng').value);
-        
-        if (lat && lng) {
-            document.getElementById('locationStatus').innerHTML = 
-                `<span class="text-success"><i class="fas fa-check-circle me-2"></i>Central location updated to: ${lat.toFixed(6)}, ${lng.toFixed(6)}</span>`;
+    if (confirmButton) {
+        confirmButton.addEventListener('click', function() {
+            var lat = parseFloat(document.getElementById('central_lat').value);
+            var lng = parseFloat(document.getElementById('central_lng').value);
+            
+            if (lat && lng) {
+                document.getElementById('locationStatus').innerHTML = 
+                    '<span class="text-success"><i class="fas fa-check-circle me-2"></i>Central location updated to: ' + lat.toFixed(6) + ', ' + lng.toFixed(6) + '</span>';
+                document.getElementById('mapContainer').style.display = 'none';
+            } else {
+                alert('Please select a location on the map first.');
+            }
+        });
+    }
+
+    if (cancelButton) {
+        cancelButton.addEventListener('click', function() {
             document.getElementById('mapContainer').style.display = 'none';
-        } else {
-            alert('Please select a location on the map first.');
-        }
-    });
+        });
+    }
 
-    // Cancel location selection
-    document.getElementById('cancelCentralLocation').addEventListener('click', function() {
-        document.getElementById('mapContainer').style.display = 'none';
-    });
-
-    // Form validation
-    document.getElementById('settingsForm').addEventListener('submit', function(e) {
-        const lat = parseFloat(document.getElementById('central_lat').value);
-        const lng = parseFloat(document.getElementById('central_lng').value);
-        const radius = parseFloat(document.getElementById('service_radius').value);
-        
-        if (!lat || !lng || !radius) {
-            e.preventDefault();
-            alert('Please fill in all fields.');
-            return false;
-        }
-        
-        if (lat < -90 || lat > 90) {
-            e.preventDefault();
-            alert('Latitude must be between -90 and 90.');
-            return false;
-        }
-        
-        if (lng < -180 || lng > 180) {
-            e.preventDefault();
-            alert('Longitude must be between -180 and 180.');
-            return false;
-        }
-        
-        if (radius <= 0 || radius > 50) {
-            e.preventDefault();
-            alert('Service radius must be between 1 and 50 km.');
-            return false;
-        }
-    });
+    if (settingsForm) {
+        settingsForm.addEventListener('submit', function(e) {
+            var lat = parseFloat(document.getElementById('central_lat').value);
+            var lng = parseFloat(document.getElementById('central_lng').value);
+            var radius = parseFloat(document.getElementById('service_radius').value);
+            
+            if (!lat || !lng || !radius) {
+                e.preventDefault();
+                alert('Please fill in all fields.');
+                return false;
+            }
+            
+            if (lat < -90 || lat > 90) {
+                e.preventDefault();
+                alert('Latitude must be between -90 and 90.');
+                return false;
+            }
+            
+            if (lng < -180 || lng > 180) {
+                e.preventDefault();
+                alert('Longitude must be between -180 and 180.');
+                return false;
+            }
+            
+            if (radius <= 0 || radius > 50) {
+                e.preventDefault();
+                alert('Service radius must be between 1 and 50 km.');
+                return false;
+            }
+        });
+    }
 });
 </script>
 {% endblock %}

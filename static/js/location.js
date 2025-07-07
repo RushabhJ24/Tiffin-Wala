@@ -4,8 +4,8 @@
  */
 
 // Configuration
-const LOCATION_CONFIG = {
-    // Service radius in kilometers
+var LOCATION_CONFIG = {
+    // Service radius in kilometers (will be loaded from server)
     SERVICE_RADIUS: 5,
     // Central coordinates (will be loaded from server)
     CENTRAL_LAT: 20.457316,
@@ -17,6 +17,25 @@ const LOCATION_CONFIG = {
         maximumAge: 300000 // 5 minutes
     }
 };
+
+// Load service configuration from server
+async function loadServiceConfig() {
+    try {
+        const response = await fetch('/api/service-config');
+        if (response.ok) {
+            const config = await response.json();
+            LOCATION_CONFIG.CENTRAL_LAT = config.central_lat;
+            LOCATION_CONFIG.CENTRAL_LNG = config.central_lng;
+            LOCATION_CONFIG.SERVICE_RADIUS = config.service_radius;
+            console.log('Loaded service config:', config);
+        }
+    } catch (error) {
+        console.warn('Failed to load service config, using defaults:', error);
+    }
+}
+
+// Load configuration when script loads
+loadServiceConfig();
 
 // Location service class
 class LocationService {

@@ -7,7 +7,7 @@ import json
 from app import app, db
 from models import User, MenuItem, Order, Feedback, Settings
 from auth import admin_required
-from location_utils import is_location_serviceable, get_location_from_address, calculate_distance
+from location_utils import is_location_serviceable, get_location_from_address, calculate_distance, update_env_file
 
 @app.route('/')
 def index():
@@ -553,7 +553,7 @@ def update_admin_settings():
             flash('Service radius must be between 1 and 50 km.', 'danger')
             return redirect(url_for('admin_settings'))
         
-        # Update settings
+        # Update settings in database
         Settings.set_value('CENTRAL_LAT', str(central_lat), 
                           'Central service location latitude', current_user.id)
         Settings.set_value('CENTRAL_LNG', str(central_lng), 
@@ -561,7 +561,10 @@ def update_admin_settings():
         Settings.set_value('SERVICE_RADIUS_KM', str(service_radius), 
                           'Service radius in kilometers', current_user.id)
         
-        flash('Settings updated successfully!', 'success')
+        # Update .env file to maintain synchronization
+        update_env_file(central_lat, central_lng, service_radius)
+        
+        flash('Settings updated successfully! Service area configuration has been updated across all systems.', 'success')
         return redirect(url_for('admin_settings'))
         
     except Exception as e:
@@ -585,6 +588,26 @@ def check_location():
     except Exception as e:
         app.logger.error(f"Location check error: {e}")
         return jsonify({'error': 'Failed to check location'}), 500
+
+@app.route('/api/service-config')
+def get_service_config():
+    """API endpoint to get current service configuration"""
+    try:
+        central_lat, central_lng = Settings.get_central_coordinates()
+        service_radius = Settings.get_service_radius()
+        
+        return jsonify({
+            'central_lat': central_lat,
+            'central_lng': central_lng,
+            'service_radius': service_radius
+        })
+    except Exception as e:
+        app.logger.error(f"Service config error: {e}")
+        return jsonify({
+            'central_lat': 20.457316,
+            'central_lng': 75.016754,
+            'service_radius': 5
+        })
 
 @app.errorhandler(404)
 def not_found(error):
