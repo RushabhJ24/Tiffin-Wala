@@ -8,8 +8,8 @@ const LOCATION_CONFIG = {
     // Service radius in kilometers
     SERVICE_RADIUS: 5,
     // Central coordinates (will be loaded from server)
-    CENTRAL_LAT: 28.6139,
-    CENTRAL_LNG: 77.2090,
+    CENTRAL_LAT: 20.457316,
+    CENTRAL_LNG: 75.016754,
     // Geolocation options
     GEO_OPTIONS: {
         enableHighAccuracy: true,

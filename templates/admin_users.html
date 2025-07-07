@@ -1,0 +1,338 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Users - Admin - Tiffin Service{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h3><i class="fas fa-users me-2"></i>Manage Users</h3>
+                    <p class="mb-0">View and manage all registered users.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Tabs -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <ul class="nav nav-pills">
+                        <li class="nav-item">
+                            <a class="nav-link {{ 'active' if status_filter == 'all' else '' }}" 
+                               href="{{ url_for('admin_users', status='all') }}">
+                                <i class="fas fa-list me-2"></i>All Users
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ 'active' if status_filter == 'active' else '' }}" 
+                               href="{{ url_for('admin_users', status='active') }}">
+                                <i class="fas fa-check-circle me-2"></i>Active Users
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ 'active' if status_filter == 'inactive' else '' }}" 
+                               href="{{ url_for('admin_users', status='inactive') }}">
+                                <i class="fas fa-times-circle me-2"></i>Inactive Users
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Users Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        Users
+                        {% if status_filter != 'all' %}
+                        <span class="badge bg-secondary">{{ status_filter.title() }}</span>
+                        {% endif %}
+                        <span class="badge bg-info">{{ users.total }} total</span>
+                    </h5>
+                    <button class="btn btn-sm btn-outline-primary" onclick="window.location.reload()">
+                        <i class="fas fa-sync-alt me-2"></i>Refresh
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    {% if users.items %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>User ID</th>
+                                        <th>Name & Contact</th>
+                                        <th>Address & Location</th>
+                                        <th>Registration</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for user in users.items %}
+                                    <tr>
+                                        <td>
+                                            <strong>#{{ user.id }}</strong>
+                                            {% if user.is_admin %}
+                                            <span class="badge bg-warning">Admin</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <strong>{{ user.name }}</strong>
+                                            </div>
+                                            <small class="text-muted">
+                                                <i class="fas fa-envelope me-1"></i>{{ user.email }}
+                                            </small>
+                                            <br>
+                                            <small class="text-muted">
+                                                <i class="fas fa-phone me-1"></i>{{ user.phone }}
+                                            </small>
+                                        </td>
+                                        <td>
+                                            <div class="small">
+                                                <strong>{{ user.address[:50] }}{% if user.address|length > 50 %}...{% endif %}</strong>
+                                            </div>
+                                            {% if user.latitude and user.longitude %}
+                                            <small class="text-muted">
+                                                <i class="fas fa-map-marker-alt me-1"></i>
+                                                {{ "%.4f" | format(user.latitude) }}, {{ "%.4f" | format(user.longitude) }}
+                                            </small>
+                                            <div class="mt-1">
+                                                <button type="button" class="btn btn-sm btn-outline-info" 
+                                                        onclick="showUserLocation({{ user.id }}, {{ user.latitude }}, {{ user.longitude }}, '{{ user.name|replace('\'', '\\\'') }}')">
+                                                    <i class="fas fa-map me-1"></i>View Location
+                                                </button>
+                                            </div>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div>{{ user.created_at.strftime('%b %d, %Y') }}</div>
+                                            <small class="text-muted">{{ user.created_at.strftime('%I:%M %p') }}</small>
+                                        </td>
+                                        <td>
+                                            {% if user.is_active %}
+                                                <span class="badge bg-success">Active</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">Inactive</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                {% if user.is_active %}
+                                                <button type="button" class="btn btn-sm btn-warning" 
+                                                        onclick="toggleUserStatus({{ user.id }}, false)"
+                                                        title="Deactivate User">
+                                                    <i class="fas fa-ban"></i>
+                                                </button>
+                                                {% else %}
+                                                <button type="button" class="btn btn-sm btn-success" 
+                                                        onclick="toggleUserStatus({{ user.id }}, true)"
+                                                        title="Activate User">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                                {% endif %}
+                                                <button type="button" class="btn btn-sm btn-info" 
+                                                        onclick="showUserDetails({{ user.id }})"
+                                                        title="View Full Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination -->
+                        {% if users.pages > 1 %}
+                        <div class="card-footer">
+                            <nav aria-label="Users pagination">
+                                <ul class="pagination pagination-sm mb-0 justify-content-center">
+                                    {% if users.has_prev %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('admin_users', status=status_filter, page=users.prev_num) }}">
+                                            <i class="fas fa-chevron-left"></i>
+                                        </a>
+                                    </li>
+                                    {% endif %}
+                                    
+                                    {% for page_num in users.iter_pages() %}
+                                        {% if page_num %}
+                                            {% if page_num != users.page %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="{{ url_for('admin_users', status=status_filter, page=page_num) }}">{{ page_num }}</a>
+                                            </li>
+                                            {% else %}
+                                            <li class="page-item active">
+                                                <span class="page-link">{{ page_num }}</span>
+                                            </li>
+                                            {% endif %}
+                                        {% else %}
+                                        <li class="page-item disabled">
+                                            <span class="page-link">...</span>
+                                        </li>
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if users.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('admin_users', status=status_filter, page=users.next_num) }}">
+                                            <i class="fas fa-chevron-right"></i>
+                                        </a>
+                                    </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-users display-4 text-muted mb-3"></i>
+                            <h5 class="text-muted">No Users Found</h5>
+                            <p class="text-muted">
+                                {% if status_filter == 'all' %}
+                                No users have registered yet.
+                                {% else %}
+                                No {{ status_filter }} users found.
+                                {% endif %}
+                            </p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- User Details Modal -->
+<div class="modal fade" id="userDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">User Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="userDetailsContent">
+                <!-- User details will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function toggleUserStatus(userId, activate) {
+    const action = activate ? 'activate' : 'deactivate';
+    const message = `Are you sure you want to ${action} this user?`;
+    
+    if (confirm(message)) {
+        fetch(`/admin/user/${userId}/toggle`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ active: activate })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Failed to update user status');
+            }
+        })
+        .catch(error => {
+            alert('Error updating user status');
+        });
+    }
+}
+
+function showUserDetails(userId) {
+    fetch(`/admin/user/${userId}/details`)
+        .then(response => response.json())
+        .then(user => {
+            const content = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Personal Information</h6>
+                        <p><strong>Name:</strong> ${user.name}</p>
+                        <p><strong>Email:</strong> ${user.email}</p>
+                        <p><strong>Phone:</strong> ${user.phone}</p>
+                        <p><strong>Status:</strong> 
+                            <span class="badge ${user.is_active ? 'bg-success' : 'bg-danger'}">
+                                ${user.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                        </p>
+                        <p><strong>Admin:</strong> ${user.is_admin ? 'Yes' : 'No'}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Location & Registration</h6>
+                        <p><strong>Address:</strong> ${user.address}</p>
+                        ${user.latitude && user.longitude ? 
+                            `<p><strong>Coordinates:</strong> ${user.latitude.toFixed(6)}, ${user.longitude.toFixed(6)}</p>` : 
+                            '<p><strong>Coordinates:</strong> Not available</p>'
+                        }
+                        <p><strong>Registered:</strong> ${new Date(user.created_at).toLocaleString()}</p>
+                        <p><strong>Total Orders:</strong> ${user.order_count || 0}</p>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('userDetailsContent').innerHTML = content;
+            const modal = new bootstrap.Modal(document.getElementById('userDetailsModal'));
+            modal.show();
+        })
+        .catch(error => {
+            alert('Error loading user details');
+        });
+}
+
+function showUserLocation(userId, lat, lng, userName) {
+    const adminLat = 21.1458004;
+    const adminLng = 79.0881546;
+    const distance = calculateDistance(adminLat, adminLng, lat, lng);
+    
+    const locationInfo = `
+User: ${userName}
+
+Location Details:
+• User Location: ${lat.toFixed(6)}, ${lng.toFixed(6)}
+• Admin Location: ${adminLat}, ${adminLng}
+• Distance: ${distance.toFixed(2)} km
+• Service Status: ${distance <= 5 ? 'Within service area' : 'Outside service area'}
+
+Would you like to view directions?
+    `;
+    
+    if (confirm(locationInfo)) {
+        const url = `https://www.google.com/maps/dir/${adminLat},${adminLng}/${lat},${lng}`;
+        window.open(url, '_blank');
+    }
+}
+
+function calculateDistance(lat1, lng1, lat2, lng2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+</script>
+{% endblock %}

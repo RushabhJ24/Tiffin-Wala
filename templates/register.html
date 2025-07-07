@@ -97,13 +97,31 @@
                             </div>
 
                             <div class="row">
-                                <div class="col-md-6 mb-3">
+                                <!-- <div class="col-md-4 mb-3">
                                     <button type="button" class="btn btn-outline-primary" id="getCurrentLocation">
-                                        <i class="fas fa-crosshairs me-2"></i>Use Current Location
+                                        <i class="fas fa-crosshairs me-2"></i>Use GPS
+                                    </button>
+                                </div> -->
+                                <div class="col-md-4 mb-3">
+                                    <button type="button" class="btn btn-outline-info" id="selectOnMap">
+                                        <i class="fas fa-map-marked-alt me-2"></i>Select on Map
                                     </button>
                                 </div>
-                                <div class="col-md-6 mb-3">
+                                <div class="col-md-4 mb-3">
                                     <div id="locationStatus" class="small text-muted"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Map container -->
+                            <div id="mapContainer" class="mb-3" style="display: none;">
+                                <div id="map" style="height: 300px; border-radius: 0.375rem;"></div>
+                                <div class="mt-2 text-center">
+                                    <button type="button" class="btn btn-success btn-sm" id="confirmLocation">
+                                        <i class="fas fa-check me-2"></i>Confirm Location
+                                    </button>
+                                    <button type="button" class="btn btn-secondary btn-sm" id="cancelLocation">
+                                        <i class="fas fa-times me-2"></i>Cancel
+                                    </button>
                                 </div>
                             </div>
 
@@ -142,13 +160,64 @@
 {% endblock %}
 
 {% block extra_scripts %}
+<!-- Leaflet OpenStreetMap (free alternative to Google Maps) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+let map;
+let marker;
+let isMapInitialized = false;
+
+function initLocationMap() {
+    if (isMapInitialized) return;
+    
+    // Initialize map centered on service area
+    map = L.map('map').setView([20.457316, 75.016754], 13);
+    
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+    
+    // Add marker
+    marker = L.marker([21.1458004, 75.016754], {
+        draggable: true
+    }).addTo(map);
+    
+    // Handle marker drag
+    marker.on('dragend', function(e) {
+        updateLocationFromMarker();
+    });
+    
+    // Handle map click
+    map.on('click', function(e) {
+        marker.setLatLng(e.latlng);
+        updateLocationFromMarker();
+    });
+    
+    isMapInitialized = true;
+}
+
+function updateLocationFromMarker() {
+    const position = marker.getLatLng();
+    document.getElementById('latitude').value = position.lat;
+    document.getElementById('longitude').value = position.lng;
+    
+    // Update address with coordinates
+    document.getElementById('address').value = `Location: ${position.lat.toFixed(6)}, ${position.lng.toFixed(6)}`;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('registerForm');
     const getCurrentLocationBtn = document.getElementById('getCurrentLocation');
+    const selectOnMapBtn = document.getElementById('selectOnMap');
+    const mapContainer = document.getElementById('mapContainer');
+    const confirmLocationBtn = document.getElementById('confirmLocation');
+    const cancelLocationBtn = document.getElementById('cancelLocation');
     const locationStatus = document.getElementById('locationStatus');
     const latInput = document.getElementById('latitude');
     const lngInput = document.getElementById('longitude');
+    const addressInput = document.getElementById('address');
     const submitBtn = document.getElementById('submitBtn');
 
     // Password confirmation validation
@@ -165,6 +234,31 @@ document.addEventListener('DOMContentLoaded', function() {
 
     password.addEventListener('input', validatePasswords);
     confirmPassword.addEventListener('input', validatePasswords);
+
+    // Select on map
+    selectOnMapBtn.addEventListener('click', function() {
+        mapContainer.style.display = 'block';
+        initLocationMap();
+        mapContainer.scrollIntoView({ behavior: 'smooth' });
+    });
+
+    // Confirm location from map
+    confirmLocationBtn.addEventListener('click', function() {
+        const lat = parseFloat(latInput.value);
+        const lng = parseFloat(lngInput.value);
+        
+        if (lat && lng) {
+            checkLocationServiceability(lat, lng);
+            mapContainer.style.display = 'none';
+        } else {
+            alert('Please select a location on the map first.');
+        }
+    });
+
+    // Cancel location selection
+    cancelLocationBtn.addEventListener('click', function() {
+        mapContainer.style.display = 'none';
+    });
 
     // Get current location
     getCurrentLocationBtn.addEventListener('click', function() {
@@ -185,28 +279,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 latInput.value = lat;
                 lngInput.value = lng;
                 
+                // Update address with coordinates
+                addressInput.value = `GPS Location: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                
                 // Check if location is serviceable
-                fetch('/api/check-location', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        latitude: lat,
-                        longitude: lng
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.serviceable) {
-                        locationStatus.innerHTML = '<span class="text-success"><i class="fas fa-check-circle me-2"></i>Location verified! We deliver to your area.</span>';
-                    } else {
-                        locationStatus.innerHTML = '<span class="text-danger"><i class="fas fa-times-circle me-2"></i>Sorry, we don\'t deliver to your location.</span>';
-                    }
-                })
-                .catch(error => {
-                    locationStatus.innerHTML = '<span class="text-warning"><i class="fas fa-exclamation-triangle me-2"></i>Could not verify location. Please try again.</span>';
-                });
+                checkLocationServiceability(lat, lng);
 
                 getCurrentLocationBtn.disabled = false;
                 getCurrentLocationBtn.innerHTML = '<i class="fas fa-crosshairs me-2"></i>Use Current Location';
@@ -231,6 +308,54 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         );
     });
+
+    // Function to check location serviceability
+    function checkLocationServiceability(lat, lng) {
+        fetch('/api/check-location', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                latitude: lat,
+                longitude: lng
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.serviceable) {
+                locationStatus.innerHTML = '<span class="text-success"><i class="fas fa-check-circle me-2"></i>Location verified! We deliver to your area.</span>';
+            } else {
+                locationStatus.innerHTML = '<span class="text-danger"><i class="fas fa-times-circle me-2"></i>Sorry, we don\'t deliver to your location.</span>';
+            }
+        })
+        .catch(error => {
+            locationStatus.innerHTML = '<span class="text-warning"><i class="fas fa-exclamation-triangle me-2"></i>Could not verify location. Please try again.</span>';
+        });
+    }
+
+    // Function to show location picker dialog
+    function showLocationPicker() {
+        const lat = prompt('Enter your latitude (e.g., 21.1458):');
+        const lng = prompt('Enter your longitude (e.g., 79.0881):');
+        
+        if (lat && lng) {
+            const latitude = parseFloat(lat);
+            const longitude = parseFloat(lng);
+            
+            if (!isNaN(latitude) && !isNaN(longitude)) {
+                latInput.value = latitude;
+                lngInput.value = longitude;
+                
+                // Create a simple address based on coordinates
+                addressInput.value = `Location: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+                
+                checkLocationServiceability(latitude, longitude);
+            } else {
+                alert('Please enter valid numeric coordinates.');
+            }
+        }
+    }
 
     // Form submission validation
     form.addEventListener('submit', function(e) {

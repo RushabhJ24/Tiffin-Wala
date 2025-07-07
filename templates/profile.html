@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - Tiffin Service{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-body p-4">
+                    <div class="text-center mb-4">
+                        <h2 class="h4">
+                            <i class="fas fa-user-circle me-2"></i>My Profile
+                        </h2>
+                        <p class="text-muted">Update your account information</p>
+                    </div>
+
+                    <form method="POST" action="{{ url_for('update_profile') }}" id="profileForm">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="name" class="form-label">Full Name</label>
+                                <input type="text" class="form-control" id="name" name="name" 
+                                       value="{{ current_user.name }}" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="email" class="form-label">Email Address</label>
+                                <input type="email" class="form-control" id="email" name="email" 
+                                       value="{{ current_user.email }}" required>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="phone" class="form-label">Phone Number</label>
+                                <input type="tel" class="form-control" id="phone" name="phone" 
+                                       value="{{ current_user.phone }}" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="address" class="form-label">Address</label>
+                            <textarea class="form-control" id="address" name="address" rows="3" required>{{ current_user.address }}</textarea>
+                        </div>
+
+                        <hr class="my-4">
+                        
+                        <h5 class="mb-3">Change Password</h5>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="current_password" class="form-label">Current Password</label>
+                                <input type="password" class="form-control" id="current_password" name="current_password">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="new_password" class="form-label">New Password</label>
+                                <input type="password" class="form-control" id="new_password" name="new_password">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="confirm_password" class="form-label">Confirm New Password</label>
+                                <input type="password" class="form-control" id="confirm_password" name="confirm_password">
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Update Profile
+                            </button>
+                            <a href="{{ url_for('user_dashboard') if not current_user.is_admin else url_for('admin_dashboard') }}" 
+                               class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('profileForm');
+    const newPassword = document.getElementById('new_password');
+    const confirmPassword = document.getElementById('confirm_password');
+    const currentPassword = document.getElementById('current_password');
+
+    // Password confirmation validation
+    function validatePasswords() {
+        if (newPassword.value && newPassword.value !== confirmPassword.value) {
+            confirmPassword.setCustomValidity('Passwords do not match');
+        } else {
+            confirmPassword.setCustomValidity('');
+        }
+    }
+
+    // Require current password if changing password
+    function validateCurrentPassword() {
+        if (newPassword.value && !currentPassword.value) {
+            currentPassword.setCustomValidity('Current password is required to change password');
+        } else {
+            currentPassword.setCustomValidity('');
+        }
+    }
+
+    newPassword.addEventListener('input', function() {
+        validatePasswords();
+        validateCurrentPassword();
+    });
+    
+    confirmPassword.addEventListener('input', validatePasswords);
+    currentPassword.addEventListener('input', validateCurrentPassword);
+
+    form.addEventListener('submit', function(e) {
+        validatePasswords();
+        validateCurrentPassword();
+    });
+});
+</script>
+{% endblock %}

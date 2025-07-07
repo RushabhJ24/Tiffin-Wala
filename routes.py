@@ -12,6 +12,9 @@ from location_utils import is_location_serviceable, get_location_from_address, c
 @app.route('/')
 def index():
     """Home page"""
+    # Auto-disable expired menu items
+    from tasks import disable_expired_menu_items
+    disable_expired_menu_items()
     if current_user.is_authenticated:
         if current_user.is_admin:
             return redirect(url_for('admin_dashboard'))
@@ -170,6 +173,9 @@ def admin_dashboard():
 @app.route('/menu')
 def menu():
     """Display today's menu"""
+    # Auto-disable expired menu items
+    from tasks import disable_expired_menu_items
+    disable_expired_menu_items()
     today = date.today()
     menu_items = MenuItem.query.filter_by(date=today, is_available=True).all()
     
@@ -302,10 +308,136 @@ def update_order_status(order_id):
     
     return redirect(url_for('admin_orders'))
 
+@app.route('/profile', methods=['GET', 'POST'])
+@login_required
+def update_profile():
+    """Update user profile"""
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        email = request.form.get('email', '').strip().lower()
+        phone = request.form.get('phone', '').strip()
+        address = request.form.get('address', '').strip()
+        current_password = request.form.get('current_password', '')
+        new_password = request.form.get('new_password', '')
+        confirm_password = request.form.get('confirm_password', '')
+        
+        # Validation
+        if not all([name, email, phone, address]):
+            flash('Name, email, phone, and address are required.', 'danger')
+            return render_template('profile.html')
+        
+        # Check if email is already taken by another user
+        existing_user = User.query.filter(User.email == email, User.id != current_user.id).first()
+        if existing_user:
+            flash('Email address is already in use.', 'danger')
+            return render_template('profile.html')
+        
+        # Password change validation
+        if new_password:
+            if not current_password:
+                flash('Current password is required to change password.', 'danger')
+                return render_template('profile.html')
+            
+            if not check_password_hash(current_user.password_hash, current_password):
+                flash('Current password is incorrect.', 'danger')
+                return render_template('profile.html')
+            
+            if new_password != confirm_password:
+                flash('New passwords do not match.', 'danger')
+                return render_template('profile.html')
+            
+            if len(new_password) < 6:
+                flash('New password must be at least 6 characters long.', 'danger')
+                return render_template('profile.html')
+        
+        # Update user information
+        current_user.name = name
+        current_user.email = email
+        current_user.phone = phone
+        current_user.address = address
+        
+        if new_password:
+            current_user.password_hash = generate_password_hash(new_password)
+        
+        try:
+            db.session.commit()
+            flash('Profile updated successfully!', 'success')
+            return redirect(url_for('update_profile'))
+        except Exception as e:
+            db.session.rollback()
+            flash('Failed to update profile. Please try again.', 'danger')
+            app.logger.error(f"Profile update error: {e}")
+    
+    return render_template('profile.html')
+
+@app.route('/admin/users')
+@admin_required
+def admin_users():
+    """Admin view for managing users"""
+    status_filter = request.args.get('status', 'all')
+    page = request.args.get('page', 1, type=int)
+    
+    query = User.query
+    
+    if status_filter == 'active':
+        query = query.filter_by(is_active=True)
+    elif status_filter == 'inactive':
+        query = query.filter_by(is_active=False)
+    
+    users = query.order_by(User.created_at.desc()).paginate(
+        page=page, per_page=20, error_out=False
+    )
+    
+    return render_template('admin_users.html', users=users, status_filter=status_filter)
+
+@app.route('/admin/user/<int:user_id>/toggle', methods=['POST'])
+@admin_required
+def toggle_user_status(user_id):
+    """Toggle user active status"""
+    user = User.query.get_or_404(user_id)
+    data = request.get_json()
+    
+    if user.is_admin and not data.get('active', True):
+        return jsonify({'success': False, 'message': 'Cannot deactivate admin users'}), 400
+    
+    user.is_active = data.get('active', True)
+    
+    try:
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"User status toggle error: {e}")
+        return jsonify({'success': False}), 500
+
+@app.route('/admin/user/<int:user_id>/details')
+@admin_required
+def user_details(user_id):
+    """Get user details for admin"""
+    user = User.query.get_or_404(user_id)
+    order_count = Order.query.filter_by(user_id=user_id).count()
+    
+    return jsonify({
+        'id': user.id,
+        'name': user.name,
+        'email': user.email,
+        'phone': user.phone,
+        'address': user.address,
+        'latitude': user.latitude,
+        'longitude': user.longitude,
+        'is_active': user.is_active,
+        'is_admin': user.is_admin,
+        'created_at': user.created_at.isoformat(),
+        'order_count': order_count
+    })
+
 @app.route('/admin/menu')
 @admin_required
 def admin_menu():
     """Admin menu management"""
+    # Auto-disable expired menu items
+    from tasks import disable_expired_menu_items
+    disable_expired_menu_items()
     selected_date = request.args.get('date')
     if selected_date:
         try:

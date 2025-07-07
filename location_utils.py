@@ -1,5 +1,7 @@
 import os
 import math
+from dotenv import load_dotenv
+load_dotenv()
 
 def calculate_distance(lat1, lng1, lat2, lng2):
     """
@@ -28,9 +30,12 @@ def is_location_serviceable(lat, lng):
     """
     Check if a location is within the serviceable area (5km radius)
     """
-    central_lat = float(os.environ.get("CENTRAL_LAT", "28.6139"))
-    central_lng = float(os.environ.get("CENTRAL_LNG", "77.2090"))
+    central_lat = float("20.457316")
+    central_lng = float("75.016754")
     max_distance = float(os.environ.get("SERVICE_RADIUS_KM", "5"))
+    print("Loaded from env:", os.environ.get("CENTRAL_LAT"))
+
+    print(central_lat, central_lng, lat, lng)
     
     distance = calculate_distance(central_lat, central_lng, lat, lng)
     return distance <= max_distance
@@ -44,7 +49,7 @@ def get_location_from_address(address):
     """
     # Default coordinates (Central Delhi)
     return {
-        'latitude': 28.6139,
-        'longitude': 77.2090,
+        'latitude': 20.457316,
+        'longitude': 75.016754,
         'formatted_address': address
     }
