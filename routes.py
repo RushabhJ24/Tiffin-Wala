@@ -5,7 +5,7 @@ from datetime import datetime, date
 import json
 
 from app import app, db
-from models import User, MenuItem, Order, Feedback
+from models import User, MenuItem, Order, Feedback, Settings
 from auth import admin_required
 from location_utils import is_location_serviceable, get_location_from_address, calculate_distance
 
@@ -523,6 +523,51 @@ def toggle_menu_item(item_id):
         app.logger.error(f"Menu item toggle error: {e}")
     
     return redirect(url_for('admin_menu', date=menu_item.date.strftime('%Y-%m-%d')))
+
+@app.route('/admin/settings')
+@admin_required
+def admin_settings():
+    """Admin settings page"""
+    central_lat, central_lng = Settings.get_central_coordinates()
+    service_radius = Settings.get_service_radius()
+    
+    return render_template('admin_settings.html', 
+                         central_lat=central_lat, 
+                         central_lng=central_lng, 
+                         service_radius=service_radius)
+
+@app.route('/admin/settings', methods=['POST'])
+@admin_required
+def update_admin_settings():
+    """Update admin settings"""
+    try:
+        central_lat = request.form.get('central_lat', type=float)
+        central_lng = request.form.get('central_lng', type=float)
+        service_radius = request.form.get('service_radius', type=float)
+        
+        if not all([central_lat, central_lng, service_radius]):
+            flash('All fields are required.', 'danger')
+            return redirect(url_for('admin_settings'))
+        
+        if service_radius <= 0 or service_radius > 50:
+            flash('Service radius must be between 1 and 50 km.', 'danger')
+            return redirect(url_for('admin_settings'))
+        
+        # Update settings
+        Settings.set_value('CENTRAL_LAT', str(central_lat), 
+                          'Central service location latitude', current_user.id)
+        Settings.set_value('CENTRAL_LNG', str(central_lng), 
+                          'Central service location longitude', current_user.id)
+        Settings.set_value('SERVICE_RADIUS_KM', str(service_radius), 
+                          'Service radius in kilometers', current_user.id)
+        
+        flash('Settings updated successfully!', 'success')
+        return redirect(url_for('admin_settings'))
+        
+    except Exception as e:
+        app.logger.error(f"Settings update error: {e}")
+        flash('Failed to update settings. Please try again.', 'danger')
+        return redirect(url_for('admin_settings'))
 
 @app.route('/api/check-location', methods=['POST'])
 def check_location():

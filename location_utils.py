@@ -30,15 +30,22 @@ def is_location_serviceable(lat, lng):
     """
     Check if a location is within the serviceable area (5km radius)
     """
-    central_lat = float("20.457316")
-    central_lng = float("75.016754")
-    max_distance = float(os.environ.get("SERVICE_RADIUS_KM", "5"))
-    print("Loaded from env:", os.environ.get("CENTRAL_LAT"))
-
-    print(central_lat, central_lng, lat, lng)
+    try:
+        from models import Settings
+        # Get dynamic central coordinates from database
+        central_lat, central_lng = Settings.get_central_coordinates()
+        service_radius = Settings.get_service_radius()
+    except:
+        # Fallback to environment variables if database not available
+        central_lat = float(os.environ.get("CENTRAL_LAT", "20.457316"))
+        central_lng = float(os.environ.get("CENTRAL_LNG", "75.016754"))
+        service_radius = float(os.environ.get("SERVICE_RADIUS_KM", "5"))
+    
+    print(f"Loaded from settings: {central_lat} {central_lng}")
+    print(f"{central_lat} {central_lng} {lat} {lng}")
     
     distance = calculate_distance(central_lat, central_lng, lat, lng)
-    return distance <= max_distance
+    return distance <= service_radius
 
 def get_location_from_address(address):
     """
@@ -47,9 +54,17 @@ def get_location_from_address(address):
     or OpenStreetMap Nominatim to convert address to lat/lng coordinates.
     For now, we'll return default coordinates.
     """
-    # Default coordinates (Central Delhi)
+    try:
+        from models import Settings
+        # Get dynamic central coordinates from database
+        central_lat, central_lng = Settings.get_central_coordinates()
+    except:
+        # Fallback coordinates
+        central_lat = 20.457316
+        central_lng = 75.016754
+    
     return {
-        'latitude': 20.457316,
-        'longitude': 75.016754,
+        'latitude': central_lat,
+        'longitude': central_lng,
         'formatted_address': address
     }

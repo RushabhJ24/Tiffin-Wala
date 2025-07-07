@@ -39,23 +39,34 @@ with app.app_context():
     import auth  # noqa: F401
     db.create_all()
     
-    # Create admin user if it doesn't exist
-    from models import User
+    # Initialize default settings if they don't exist
+    from models import User, Settings
     from werkzeug.security import generate_password_hash
     
+    # Initialize default settings
+    if not Settings.query.filter_by(key='CENTRAL_LAT').first():
+        Settings.set_value('CENTRAL_LAT', os.environ.get("CENTRAL_LAT", "20.457316"), 
+                          'Central service location latitude')
+        Settings.set_value('CENTRAL_LNG', os.environ.get("CENTRAL_LNG", "75.016754"), 
+                          'Central service location longitude')
+        Settings.set_value('SERVICE_RADIUS_KM', os.environ.get("SERVICE_RADIUS_KM", "5"), 
+                          'Service radius in kilometers')
+    
+    # Create admin user if it doesn't exist
     admin_email = os.environ.get("ADMIN_EMAIL", "admin@tiffinservice.com")
     admin_password = os.environ.get("ADMIN_PASSWORD", "admin123")
     
     admin_user = User.query.filter_by(email=admin_email).first()
     if not admin_user:
+        central_lat, central_lng = Settings.get_central_coordinates()
         admin_user = User(
             name="Admin",
             email=admin_email,
             phone="1234567890",
             password_hash=generate_password_hash(admin_password),
             address="Admin Address",
-            latitude=float(os.environ.get("CENTRAL_LAT", "28.6139")),
-            longitude=float(os.environ.get("CENTRAL_LNG", "77.2090")),
+            latitude=central_lat,
+            longitude=central_lng,
             is_admin=True
         )
         db.session.add(admin_user)

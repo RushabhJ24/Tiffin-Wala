@@ -135,12 +135,14 @@ A modern, responsive web platform for a Tiffin Service business built with Flask
 - Error handling and user feedback
 
 ## Changelog
-- July 07, 2025. Successfully migrated from Replit Agent to standard Replit environment
+- July 07, 2025: Successfully migrated from Replit Agent to standard Replit environment
   - Fixed PostgreSQL database configuration and environment variables
-  - Added "Select on Map" buttons for location selection in order placement and profile pages
+  - Added embedded map functionality to order placement and profile pages
+  - Implemented dynamic central coordinate management system for admin
+  - Added Settings model with admin interface for configuring service area
   - Enhanced location services with GPS coordinate capture and serviceability verification
   - Fixed JavaScript errors and improved user experience for location-based features
-- July 06, 2025. Initial setup
+- July 06, 2025: Initial setup
 
 ## User Preferences
 
